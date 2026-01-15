@@ -77,7 +77,7 @@ export default function LandingPage() {
         className="pointer-events-none fixed inset-0 z-20 transition-transform duration-300 ease-out"
         style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
       >
-        <div className="h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-900/40 dark:bg-slate-800/40 blur-3xl" />
+        <div className="h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-900/50 dark:bg-slate-800/50 blur-2xl" />
       </div>
       <div className="absolute inset-0 bg-gradient-animation z-0"></div>
       {heroImage && (
@@ -86,7 +86,7 @@ export default function LandingPage() {
           alt={heroImage.description}
           data-ai-hint={heroImage.imageHint}
           fill
-          className="object-cover opacity-5 dark:opacity-10 z-0"
+          className="object-cover opacity-10 dark:opacity-15 z-0"
         />
       )}
        <Bot className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 text-primary/5 dark:text-primary/10 -z-10 floating-bot" />
