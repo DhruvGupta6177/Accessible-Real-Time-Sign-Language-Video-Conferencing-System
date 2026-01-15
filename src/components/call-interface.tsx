@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Copy, Ear, Hand, Link as LinkIcon, Mic, MicOff, PhoneOff, Send, Share2, Video as VideoIcon, VideoOff, Volume2 } from "lucide-react";
+import { Copy, Ear, Hand, Link as LinkIcon, Mic, MicOff, PhoneOff, Send, Share2, PanelRightOpen, PanelRightClose, Video as VideoIcon, VideoOff, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 export type UserMode = "hearing" | "deaf";
 type Caption = {
@@ -48,6 +49,8 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
   const [isLoading, setIsLoading] = useState<Record<string, boolean>>({});
   const [roomUrl, setRoomUrl] = useState('');
   const [isShareApiSupported, setIsShareApiSupported] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
@@ -260,92 +263,104 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
   }, [localStream, userMode, isMicMuted, isVideoOn, processSpeechToText, processSignToText, toast]);
 
   return (
-    <div className="flex flex-col md:flex-row h-screen bg-background text-foreground">
+    <div className="flex h-screen bg-background text-foreground">
       <audio ref={audioPlayerRef} className="hidden" />
-      <main className="flex-1 flex flex-col relative">
-        <div className="flex-1 relative flex items-center justify-center p-4">
+      <main className="flex-1 flex flex-col relative overflow-hidden">
+        <div className="absolute top-4 left-4 z-20">
+          <h2 className="font-headline text-2xl font-bold text-white" style={{textShadow: '0 0 5px black'}}>LinguaSign</h2>
+        </div>
+        <div className="flex-1 relative flex items-center justify-center p-4 bg-black">
           <VideoPlayer stream={null} placeholder={remoteUserPlaceholder} />
-          <div className="absolute bottom-6 right-6 w-1/4 max-w-[250px] shadow-lg rounded-lg border-2 border-primary">
+          <div className="absolute bottom-24 md:bottom-6 right-6 w-1/4 max-w-[250px] min-w-[150px] shadow-lg rounded-lg border-2 border-primary z-20">
             <VideoPlayer stream={localStream} placeholder={localUserPlaceholder} isMuted isPip />
+          </div>
+        </div>
+
+        <div className="absolute bottom-0 left-0 right-0 z-20 flex justify-center p-4">
+          <div className="flex items-center gap-4 bg-card/80 backdrop-blur-sm p-3 rounded-xl shadow-lg">
+             <Button variant={isMicMuted ? "outline" : "default"} size="icon" className="w-12 h-12 rounded-full" onClick={handleToggleMic} disabled={userMode === 'deaf'}>
+                {isMicMuted ? <MicOff/> : <Mic/>}
+              </Button>
+              <Button variant={isVideoOn ? "default" : "outline"} size="icon" className="w-12 h-12 rounded-full" onClick={handleToggleVideo}>
+                {isVideoOn ? <VideoIcon/> : <VideoOff/>}
+              </Button>
+              <Separator orientation="vertical" className="h-8" />
+              <Button variant="destructive" size="icon" className="w-14 h-12 rounded-full" onClick={handleStopCall}>
+                <PhoneOff/>
+              </Button>
+              <Separator orientation="vertical" className="h-8" />
+               <Button variant="outline" size="icon" className="w-12 h-12 rounded-full" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+                {isSidebarOpen ? <PanelRightClose /> : <PanelRightOpen />}
+              </Button>
           </div>
         </div>
       </main>
       
-      <Card className="w-full md:w-[400px] m-4 md:m-0 md:mr-4 md:my-4 flex flex-col rounded-xl shadow-lg">
-        <CardContent className="p-4 flex-1 flex flex-col gap-4">
-          <div className="flex justify-between items-center">
-             <h2 className="font-headline text-2xl font-bold">LinguaSign</h2>
-             <div className="flex items-center gap-2">
-                <Button variant={isMicMuted ? "outline" : "default"} size="icon" onClick={handleToggleMic} disabled={userMode === 'deaf'}>
-                  {isMicMuted ? <MicOff/> : <Mic/>}
-                </Button>
-                <Button variant={isVideoOn ? "default" : "outline"} size="icon" onClick={handleToggleVideo}>
-                  {isVideoOn ? <VideoIcon/> : <VideoOff/>}
-                </Button>
-                <Button variant="destructive" size="icon" onClick={handleStopCall}>
-                  <PhoneOff/>
-                </Button>
-             </div>
-          </div>
-
-          <Separator />
-          
-           <div className="space-y-2">
-            <Label htmlFor="room-link" className="text-xs font-semibold text-muted-foreground">Share Room Link</Label>
-            <div className="flex gap-2">
-              <Input id="room-link" type="text" readOnly value={roomUrl} className="bg-muted/50" />
-              <Button variant="outline" size="icon" onClick={handleCopyLink}>
-                <Copy className="h-4 w-4" />
-              </Button>
-              {isShareApiSupported && (
-                <Button variant="outline" size="icon" onClick={handleShareLink}>
-                  <Share2 className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-          </div>
-          
-          <div className="flex-1 flex flex-col min-h-0 gap-4">
+      <div className={cn("flex flex-col transition-all duration-300 ease-in-out", isSidebarOpen ? "w-[400px]" : "w-0")}>
+        <Card className={cn("m-4 flex-1 flex flex-col rounded-xl shadow-lg overflow-hidden transition-opacity duration-300", isSidebarOpen ? "opacity-100" : "opacity-0")}>
+          <CardContent className="p-4 flex-1 flex flex-col gap-4">
             <div className='flex items-center gap-2 text-sm font-semibold text-muted-foreground'>
-                {userMode === 'hearing' ? <Ear /> : <Hand />}
-                You are in {userMode === 'hearing' ? 'Hearing' : 'Deaf/Mute'} Mode
+                  {userMode === 'hearing' ? <Ear /> : <Hand />}
+                  You are in {userMode === 'hearing' ? 'Hearing' : 'Deaf/Mute'} Mode
+              </div>
+            
+            <Separator />
+            
+            <div className="space-y-2">
+              <Label htmlFor="room-link" className="text-xs font-semibold text-muted-foreground">Share Room Link</Label>
+              <div className="flex gap-2">
+                <Input id="room-link" type="text" readOnly value={roomUrl} className="bg-muted/50" />
+                <Button variant="outline" size="icon" onClick={handleCopyLink}>
+                  <Copy className="h-4 w-4" />
+                </Button>
+                {isShareApiSupported && (
+                  <Button variant="outline" size="icon" onClick={handleShareLink}>
+                    <Share2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
-             {userMode === 'hearing' ? (
-                <div className="flex-1 flex flex-col gap-4 min-h-0">
-                  <AvatarDisplay animationCommands={avatarCommands} />
-                  <CaptionDisplay captions={captions} />
-                </div>
-              ) : (
-                <div className="flex-1 flex flex-col gap-4 min-h-0">
-                   <div className="flex-1 flex flex-col gap-2">
-                      <h3 className="text-sm font-semibold text-muted-foreground">Spoken Response</h3>
-                      <Card className="flex-1 flex items-center justify-center bg-muted">
-                        <div className="text-center text-muted-foreground">
-                          <Volume2 className="w-10 h-10 mx-auto"/>
-                          <p className="text-sm mt-2">Audio from the other user will play automatically.</p>
-                          {isLoading['tts'] && <p className="text-xs animate-pulse mt-1">Generating audio...</p>}
-                        </div>
-                      </Card>
-                   </div>
-                  <CaptionDisplay captions={captions} />
-                </div>
-              )}
-          </div>
-          
-          <div className="flex flex-col gap-2">
-             <Textarea 
-               placeholder="Or type a message..." 
-               value={manualInput}
-               onChange={(e) => setManualInput(e.target.value)}
-               className="resize-none" 
-               rows={2}
-             />
-             <Button onClick={handleManualSend} disabled={!manualInput.trim()}>
-                <Send className="mr-2" /> Send Message
-             </Button>
-          </div>
-        </CardContent>
-      </Card>
+            
+            <div className="flex-1 flex flex-col min-h-0 gap-4">
+              {userMode === 'hearing' ? (
+                  <div className="flex-1 flex flex-col gap-4 min-h-0">
+                    <AvatarDisplay animationCommands={avatarCommands} />
+                    <CaptionDisplay captions={captions} />
+                  </div>
+                ) : (
+                  <div className="flex-1 flex flex-col gap-4 min-h-0">
+                    <div className="flex-1 flex flex-col gap-2">
+                        <h3 className="text-sm font-semibold text-muted-foreground">Spoken Response</h3>
+                        <Card className="flex-1 flex items-center justify-center bg-muted">
+                          <div className="text-center text-muted-foreground">
+                            <Volume2 className="w-10 h-10 mx-auto"/>
+                            <p className="text-sm mt-2">Audio from the other user will play automatically.</p>
+                            {isLoading['tts'] && <p className="text-xs animate-pulse mt-1">Generating audio...</p>}
+                          </div>
+                        </Card>
+                    </div>
+                    <CaptionDisplay captions={captions} />
+                  </div>
+                )}
+            </div>
+            
+            <div className="flex flex-col gap-2">
+              <Textarea 
+                placeholder="Or type a message..." 
+                value={manualInput}
+                onChange={(e) => setManualInput(e.target.value)}
+                className="resize-none" 
+                rows={2}
+              />
+              <Button onClick={handleManualSend} disabled={!manualInput.trim()}>
+                  <Send className="mr-2" /> Send Message
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
+
+    
