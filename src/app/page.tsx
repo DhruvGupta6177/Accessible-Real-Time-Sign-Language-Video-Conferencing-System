@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,19 @@ const features = [
 export default function LandingPage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
+  const [position, setPosition] = useState({ x: -100, y: -100 });
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      setPosition({ x: e.clientX, y: e.clientY });
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, []);
 
   const heroImage = PlaceHolderImages.find(p => p.id === 'hero-background');
 
@@ -59,6 +73,12 @@ export default function LandingPage() {
 
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden bg-background">
+       <div 
+        className="pointer-events-none fixed inset-0 z-20 transition-transform duration-300 ease-out"
+        style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
+      >
+        <div className="h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/20 blur-3xl" />
+      </div>
       <div className="absolute inset-0 bg-gradient-animation z-0"></div>
       {heroImage && (
          <Image
