@@ -23,6 +23,24 @@
       "description": "A placeholder image for a user's avatar.",
       "imageUrl": "https://images.unsplash.com/photo-1639149888905-fb39731f2e6c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHx1c2VyJTIwYXZhdGFyfGVufDB8fHx8MTc2ODQ1MDEyNnww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "user avatar"
+    },
+    {
+      "id": "feature-translation",
+      "description": "Image representing real-time translation.",
+      "imageUrl": "https://images.unsplash.com/photo-1553775282-20af8077977a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxsYW5ndWFnZSUyMHRyYW5zbGF0aW9ufGVufDB8fHx8MTc2ODUzOTU2MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "language translation"
+    },
+    {
+      "id": "feature-avatar",
+      "description": "Image representing a 3D avatar.",
+      "imageUrl": "https://images.unsplash.com/photo-1690766155123-34909a89531a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxhdmF0YXIlMjAzZHxlbnwwfHx8fDE3Njg1Mzk1OTl8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "avatar 3d"
+    },
+    {
+      "id": "feature-communication",
+      "description": "Image representing seamless communication.",
+      "imageUrl": "https://images.unsplash.com/photo-1517048676732-d65bc937f952?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxtZWV0aW5nJTIwY29sbGFib3JhdGlvbnxlbnwwfHx8fDE3Njg1Mzk2Mzd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "meeting collaboration"
     }
   ]
 }
