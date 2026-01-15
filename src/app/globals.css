@@ -70,12 +70,12 @@
 
 @layer utilities {
   .bg-gradient-animation {
-    @apply bg-gradient-to-br from-blue-100 via-purple-100 to-teal-100;
+    @apply bg-gradient-to-br from-primary/20 via-accent/20 to-secondary/20;
     background-size: 200% 200%;
-    animation: gradient-move 15s ease infinite;
+    animation: gradient-move 10s ease infinite;
   }
   .dark .bg-gradient-animation {
-    @apply from-gray-900 via-purple-950 to-blue-950;
+    @apply from-primary/10 via-background to-secondary/10;
   }
 }
 

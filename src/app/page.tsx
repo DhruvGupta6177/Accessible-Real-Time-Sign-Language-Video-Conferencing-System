@@ -66,7 +66,7 @@ export default function LandingPage() {
           alt={heroImage.description}
           data-ai-hint={heroImage.imageHint}
           fill
-          className="object-cover opacity-10 z-0"
+          className="object-cover opacity-5 dark:opacity-10 z-0"
         />
       )}
       
