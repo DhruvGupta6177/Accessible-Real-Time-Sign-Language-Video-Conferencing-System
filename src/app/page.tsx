@@ -77,7 +77,7 @@ export default function LandingPage() {
         className="pointer-events-none fixed inset-0 z-30 transition-transform duration-300 ease-out"
         style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
       >
-        <div className="h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-900/50 dark:bg-slate-800/50 blur-xl" />
+        <div className="h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-900/50 dark:bg-slate-800/50 blur-xl" />
       </div>
       <div className="absolute inset-0 bg-gradient-animation z-0"></div>
       
