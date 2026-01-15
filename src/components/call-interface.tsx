@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Copy, Ear, Hand, Link as LinkIcon, Mic, MicOff, PhoneOff, Send, Share2, PanelRightOpen, PanelRightClose, Video as VideoIcon, VideoOff, Volume2, CircleDot, Users, User } from "lucide-react";
+import { Copy, Ear, Hand, Link as LinkIcon, Mic, MicOff, PhoneOff, Send, Share2, PanelRightOpen, PanelRightClose, Video as VideoIcon, VideoOff, Volume2, CircleDot, Users, User, ChevronDown, ChevronUp, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -20,6 +20,8 @@ import { cn } from "@/lib/utils";
 import ShareDialog from "./share-dialog";
 import { useUser } from "@/firebase";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Input } from "@/components/ui/input";
 
 export type UserMode = "hearing" | "deaf";
 type Caption = {
@@ -52,6 +54,8 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
   const [roomUrl, setRoomUrl] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
+  const [isParticipantsOpen, setIsParticipantsOpen] = useState(true);
+  const [participantSearch, setParticipantSearch] = useState("");
 
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -65,6 +69,10 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
     { name: user?.email || 'You', isMe: true },
     { name: 'Remote User', isMe: false }
   ];
+
+  const filteredParticipants = participants.filter(p => 
+    p.name.toLowerCase().includes(participantSearch.toLowerCase())
+  );
 
   const addCaption = (text: string, source: "local" | "remote") => {
     setCaptions(prev => [...prev, { id: Date.now(), text, source }]);
@@ -146,6 +154,7 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
       }
       setLoading('tts', false);
     } catch (e) {
+      console.error(e);
       toast({ variant: 'destructive', title: 'Sign Translation Error' });
     } finally {
       setLoading('sign', false);
@@ -165,6 +174,7 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
       setAvatarCommands(avatarResult.avatarAnimationCommands);
       setLoading('avatar', false);
     } catch (e) {
+      console.error(e);
       toast({ variant: 'destructive', title: 'Speech Recognition Error' });
     } finally {
       setLoading('speech', false);
@@ -315,20 +325,36 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
             
             <Separator />
 
-             <div className="flex flex-col gap-2">
-                <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2"><Users className="w-4 h-4"/>Participants ({participants.length})</h3>
-                <div className="space-y-2">
-                    {participants.map((p, i) => (
-                        <div key={i} className="flex items-center gap-2 p-2 rounded-md bg-muted/50">
-                            <Avatar className="h-8 w-8">
-                                {userAvatarPlaceholder && <AvatarImage src={p.isMe ? localUserPlaceholder.imageUrl : remoteUserPlaceholder.imageUrl} alt={p.name} />}
-                                <AvatarFallback><User /></AvatarFallback>
-                            </Avatar>
-                            <span className="font-medium text-sm">{p.name}</span>
-                        </div>
-                    ))}
-                </div>
-             </div>
+             <Collapsible open={isParticipantsOpen} onOpenChange={setIsParticipantsOpen}>
+                <CollapsibleTrigger className="w-full">
+                    <div className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
+                        <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2"><Users className="w-4 h-4"/>Participants ({participants.length})</h3>
+                        {isParticipantsOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </div>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-2 pt-2">
+                    <div className="relative">
+                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input 
+                            placeholder="Search participants..." 
+                            value={participantSearch}
+                            onChange={(e) => setParticipantSearch(e.target.value)}
+                            className="pl-8"
+                        />
+                    </div>
+                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                        {filteredParticipants.map((p, i) => (
+                            <div key={i} className="flex items-center gap-2 p-2 rounded-md bg-muted/50">
+                                <Avatar className="h-8 w-8">
+                                    {userAvatarPlaceholder && <AvatarImage src={p.isMe ? localUserPlaceholder.imageUrl : remoteUserPlaceholder.imageUrl} alt={p.name} />}
+                                    <AvatarFallback><User /></AvatarFallback>
+                                </Avatar>
+                                <span className="font-medium text-sm truncate">{p.name}</span>
+                            </div>
+                        ))}
+                    </div>
+                </CollapsibleContent>
+             </Collapsible>
 
             <Separator />
             
