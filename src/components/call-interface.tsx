@@ -19,6 +19,7 @@ import { speechToSignAvatarForDeafUser } from '@/ai/flows/speech-to-sign-avatar-
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
+import { useRouter } from "next/navigation";
 
 type UserMode = "hearing" | "deaf";
 type Caption = {
@@ -36,9 +37,9 @@ const blobToDataUrl = (blob: Blob): Promise<string> => {
   });
 };
 
-export default function CallInterface() {
+export default function CallInterface({ roomId }: { roomId: string }) {
   const { toast } = useToast();
-  const [callStarted, setCallStarted] = useState(false);
+  const router = useRouter();
   const [userMode, setUserMode] = useState<UserMode>("hearing");
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [isMicMuted, setIsMicMuted] = useState(true);
@@ -47,7 +48,6 @@ export default function CallInterface() {
   const [avatarCommands, setAvatarCommands] = useState("");
   const [manualInput, setManualInput] = useState("");
   const [isLoading, setIsLoading] = useState<Record<string, boolean>>({});
-  const [roomId, setRoomId] = useState('');
   const [roomUrl, setRoomUrl] = useState('');
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -55,7 +55,6 @@ export default function CallInterface() {
 
   const localUserPlaceholder = PlaceHolderImages.find(p => p.id === 'local-user-placeholder')!;
   const remoteUserPlaceholder = PlaceHolderImages.find(p => p.id === 'remote-user-placeholder')!;
-  const heroBg = PlaceHolderImages.find(p => p.id === 'hero-background')!;
 
   const addCaption = (text: string, source: "local" | "remote") => {
     setCaptions(prev => [...prev, { id: Date.now(), text, source }]);
@@ -63,33 +62,36 @@ export default function CallInterface() {
   
   const setLoading = (key: string, value: boolean) => setIsLoading(prev => ({...prev, [key]: value}));
 
-  const handleStartCall = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      setLocalStream(stream);
-      stream.getAudioTracks()[0].enabled = false;
-      const newRoomId = Math.random().toString(36).substring(2, 9);
-      setRoomId(newRoomId);
-      setRoomUrl(`${window.location.origin}/?room=${newRoomId}`);
-      setCallStarted(true);
-    } catch (error) {
-      console.error("Error accessing media devices.", error);
-      toast({
-        variant: "destructive",
-        title: "Camera/Mic Error",
-        description: "Could not access your camera and microphone. Please check permissions and try again.",
-      });
+  useEffect(() => {
+    const startCall = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        setLocalStream(stream);
+        stream.getAudioTracks()[0].enabled = false;
+        setRoomUrl(`${window.location.origin}/room/${roomId}`);
+      } catch (error) {
+        console.error("Error accessing media devices.", error);
+        toast({
+          variant: "destructive",
+          title: "Camera/Mic Error",
+          description: "Could not access your camera and microphone. Please check permissions and try again.",
+        });
+      }
+    };
+    startCall();
+
+    return () => {
+      localStream?.getTracks().forEach(track => track.stop());
     }
-  };
+  }, [roomId, toast]);
+
 
   const handleStopCall = () => {
     localStream?.getTracks().forEach(track => track.stop());
     setLocalStream(null);
-    setCallStarted(false);
     setCaptions([]);
     setAvatarCommands("");
-    setRoomId('');
-    setRoomUrl('');
+    router.push('/dashboard');
   };
 
   const handleToggleMic = () => {
@@ -178,7 +180,7 @@ export default function CallInterface() {
   };
 
   useEffect(() => {
-    if (!localStream || !callStarted) {
+    if (!localStream) {
       mediaRecorderRef.current?.stop();
       return;
     }
@@ -233,29 +235,7 @@ export default function CallInterface() {
     return () => {
       mediaRecorderRef.current?.stop();
     };
-  }, [localStream, callStarted, userMode, isMicMuted, isVideoOn, processSpeechToText, processSignToText, toast]);
-
-  if (!callStarted) {
-    return (
-      <div className="relative w-full h-screen flex items-center justify-center text-center p-4">
-        <Image src={heroBg.imageUrl} alt={heroBg.description} data-ai-hint={heroBg.imageHint} fill className="object-cover" />
-        <div className="absolute inset-0 bg-background/70 backdrop-blur-sm"></div>
-        <div className="relative z-10 flex flex-col items-center gap-4">
-          <div className="bg-primary/30 text-primary p-4 rounded-full">
-            <Ear className="w-12 h-12" />
-          </div>
-          <h1 className="text-4xl md:text-6xl font-bold font-headline">LinguaSign</h1>
-          <p className="max-w-2xl text-lg text-foreground/80">
-            Breaking barriers with real-time sign language and speech translation.
-            Join a video call where everyone can be part of the conversation.
-          </p>
-          <Button size="lg" className="mt-4 text-lg" onClick={handleStartCall}>
-            <VideoIcon className="mr-2" /> Start New Call
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  }, [localStream, userMode, isMicMuted, isVideoOn, processSpeechToText, processSignToText, toast]);
 
   return (
     <div className="flex flex-col md:flex-row h-screen bg-background text-foreground">
@@ -298,16 +278,16 @@ export default function CallInterface() {
             </div>
           </div>
           
-          <Tabs value={userMode} onValueChange={(v) => setUserMode(v as UserMode)} className="flex-1 flex flex-col">
+          <Tabs value={userMode} onValueChange={(v) => setUserMode(v as UserMode)} className="flex-1 flex flex-col min-h-0">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="hearing"><Ear className="mr-2"/>Hearing</TabsTrigger>
               <TabsTrigger value="deaf"><Hand className="mr-2"/>Deaf/Mute</TabsTrigger>
             </TabsList>
-            <TabsContent value="hearing" className="flex-1 flex flex-col gap-4 mt-4">
+            <TabsContent value="hearing" className="flex-1 flex flex-col gap-4 mt-4 min-h-0">
               <AvatarDisplay animationCommands={avatarCommands} />
               <CaptionDisplay captions={captions} />
             </TabsContent>
-            <TabsContent value="deaf" className="flex-1 flex flex-col gap-4 mt-4">
+            <TabsContent value="deaf" className="flex-1 flex flex-col gap-4 mt-4 min-h-0">
                <div className="flex-1 flex flex-col gap-2">
                   <h3 className="text-sm font-semibold text-muted-foreground">Spoken Response</h3>
                   <Card className="flex-1 flex items-center justify-center bg-muted">
