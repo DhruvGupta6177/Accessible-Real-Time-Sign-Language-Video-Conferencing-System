@@ -105,10 +105,10 @@ export default function LandingPage() {
                 className="space-x-4 animate-fade-in-up"
                 style={{ animationDelay: '0.6s' }}
               >
-                <Button asChild size="lg">
+                <Button asChild size="lg" className="transform transition-transform duration-300 hover:scale-105">
                   <Link href="/signup">Get Started Free</Link>
                 </Button>
-                <Button asChild size="lg" variant="secondary">
+                <Button asChild size="lg" variant="secondary" className="transform transition-transform duration-300 hover:scale-105">
                   <Link href="/login">Join a Meeting</Link>
                 </Button>
               </div>
