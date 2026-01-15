@@ -1,11 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import Image from "next/image";
 import { Copy, Ear, Hand, Link as LinkIcon, Mic, MicOff, PhoneOff, Send, Share2, Video as VideoIcon, VideoOff, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import VideoPlayer from "@/components/video-player";
 import CaptionDisplay from "@/components/caption-display";
@@ -21,7 +19,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { useRouter } from "next/navigation";
 
-type UserMode = "hearing" | "deaf";
+export type UserMode = "hearing" | "deaf";
 type Caption = {
   id: number;
   text: string;
@@ -37,10 +35,10 @@ const blobToDataUrl = (blob: Blob): Promise<string> => {
   });
 };
 
-export default function CallInterface({ roomId }: { roomId: string }) {
+export default function CallInterface({ roomId, initialUserMode }: { roomId: string, initialUserMode: UserMode }) {
   const { toast } = useToast();
   const router = useRouter();
-  const [userMode, setUserMode] = useState<UserMode>("hearing");
+  const [userMode, setUserMode] = useState<UserMode>(initialUserMode);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [isMicMuted, setIsMicMuted] = useState(true);
   const [isVideoOn, setIsVideoOn] = useState(true);
@@ -307,29 +305,32 @@ export default function CallInterface({ roomId }: { roomId: string }) {
             </div>
           </div>
           
-          <Tabs value={userMode} onValueChange={(v) => setUserMode(v as UserMode)} className="flex-1 flex flex-col min-h-0">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="hearing"><Ear className="mr-2"/>Hearing</TabsTrigger>
-              <TabsTrigger value="deaf"><Hand className="mr-2"/>Deaf/Mute</TabsTrigger>
-            </TabsList>
-            <TabsContent value="hearing" className="flex-1 flex flex-col gap-4 mt-4 min-h-0">
-              <AvatarDisplay animationCommands={avatarCommands} />
-              <CaptionDisplay captions={captions} />
-            </TabsContent>
-            <TabsContent value="deaf" className="flex-1 flex flex-col gap-4 mt-4 min-h-0">
-               <div className="flex-1 flex flex-col gap-2">
-                  <h3 className="text-sm font-semibold text-muted-foreground">Spoken Response</h3>
-                  <Card className="flex-1 flex items-center justify-center bg-muted">
-                    <div className="text-center text-muted-foreground">
-                      <Volume2 className="w-10 h-10 mx-auto"/>
-                      <p className="text-sm mt-2">Audio from the other user will play automatically.</p>
-                      {isLoading['tts'] && <p className="text-xs animate-pulse mt-1">Generating audio...</p>}
-                    </div>
-                  </Card>
-               </div>
-              <CaptionDisplay captions={captions} />
-            </TabsContent>
-          </Tabs>
+          <div className="flex-1 flex flex-col min-h-0 gap-4">
+            <div className='flex items-center gap-2 text-sm font-semibold text-muted-foreground'>
+                {userMode === 'hearing' ? <Ear /> : <Hand />}
+                You are in {userMode === 'hearing' ? 'Hearing' : 'Deaf/Mute'} Mode
+            </div>
+             {userMode === 'hearing' ? (
+                <div className="flex-1 flex flex-col gap-4 min-h-0">
+                  <AvatarDisplay animationCommands={avatarCommands} />
+                  <CaptionDisplay captions={captions} />
+                </div>
+              ) : (
+                <div className="flex-1 flex flex-col gap-4 min-h-0">
+                   <div className="flex-1 flex flex-col gap-2">
+                      <h3 className="text-sm font-semibold text-muted-foreground">Spoken Response</h3>
+                      <Card className="flex-1 flex items-center justify-center bg-muted">
+                        <div className="text-center text-muted-foreground">
+                          <Volume2 className="w-10 h-10 mx-auto"/>
+                          <p className="text-sm mt-2">Audio from the other user will play automatically.</p>
+                          {isLoading['tts'] && <p className="text-xs animate-pulse mt-1">Generating audio...</p>}
+                        </div>
+                      </Card>
+                   </div>
+                  <CaptionDisplay captions={captions} />
+                </div>
+              )}
+          </div>
           
           <div className="flex flex-col gap-2">
              <Textarea 
