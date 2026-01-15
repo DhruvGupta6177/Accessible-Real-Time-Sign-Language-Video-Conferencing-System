@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { Bot, Copy, Hand, Hearing, Mic, MicOff, PhoneOff, Send, Video as VideoIcon, VideoOff, Volume2 } from "lucide-react";
+import { Bot, Copy, Hand, Ear, Mic, MicOff, PhoneOff, Send, Video as VideoIcon, VideoOff, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -228,7 +228,7 @@ export default function CallInterface() {
         <div className="absolute inset-0 bg-background/70 backdrop-blur-sm"></div>
         <div className="relative z-10 flex flex-col items-center gap-4">
           <div className="bg-primary/30 text-primary p-4 rounded-full">
-            <Hearing className="w-12 h-12" />
+            <Ear className="w-12 h-12" />
           </div>
           <h1 className="text-4xl md:text-6xl font-bold font-headline">LinguaSign</h1>
           <p className="max-w-2xl text-lg text-foreground/80">
@@ -276,7 +276,7 @@ export default function CallInterface() {
           
           <Tabs value={userMode} onValueChange={(v) => setUserMode(v as UserMode)} className="flex-1 flex flex-col">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="hearing"><Hearing className="mr-2"/>Hearing</TabsTrigger>
+              <TabsTrigger value="hearing"><Ear className="mr-2"/>Hearing</TabsTrigger>
               <TabsTrigger value="deaf"><Hand className="mr-2"/>Deaf/Mute</TabsTrigger>
             </TabsList>
             <TabsContent value="hearing" className="flex-1 flex flex-col gap-4 mt-4">
