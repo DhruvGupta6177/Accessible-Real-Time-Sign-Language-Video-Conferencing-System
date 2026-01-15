@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { Bot, Copy, Hand, Ear, Mic, MicOff, PhoneOff, Send, Video as VideoIcon, VideoOff, Volume2 } from "lucide-react";
+import { Copy, Ear, Hand, Link as LinkIcon, Mic, MicOff, PhoneOff, Send, Video as VideoIcon, VideoOff, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -17,6 +17,8 @@ import { signToTextTranslation } from '@/ai/flows/sign-to-text-translation';
 import { textToSpeechForHearingUser } from '@/ai/flows/text-to-speech-for-hearing-user';
 import { speechToSignAvatarForDeafUser } from '@/ai/flows/speech-to-sign-avatar-for-deaf-user';
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
 
 type UserMode = "hearing" | "deaf";
 type Caption = {
@@ -45,6 +47,8 @@ export default function CallInterface() {
   const [avatarCommands, setAvatarCommands] = useState("");
   const [manualInput, setManualInput] = useState("");
   const [isLoading, setIsLoading] = useState<Record<string, boolean>>({});
+  const [roomId, setRoomId] = useState('');
+  const [roomUrl, setRoomUrl] = useState('');
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
@@ -64,6 +68,9 @@ export default function CallInterface() {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       setLocalStream(stream);
       stream.getAudioTracks()[0].enabled = false;
+      const newRoomId = Math.random().toString(36).substring(2, 9);
+      setRoomId(newRoomId);
+      setRoomUrl(`${window.location.origin}/?room=${newRoomId}`);
       setCallStarted(true);
     } catch (error) {
       console.error("Error accessing media devices.", error);
@@ -81,6 +88,8 @@ export default function CallInterface() {
     setCallStarted(false);
     setCaptions([]);
     setAvatarCommands("");
+    setRoomId('');
+    setRoomUrl('');
   };
 
   const handleToggleMic = () => {
@@ -161,6 +170,11 @@ export default function CallInterface() {
       setLoading('tts', false);
     }
     setManualInput("");
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(roomUrl);
+    toast({ title: "Link Copied!", description: "The room link has been copied to your clipboard." });
   };
 
   useEffect(() => {
@@ -273,6 +287,16 @@ export default function CallInterface() {
           </div>
 
           <Separator />
+          
+           <div className="space-y-2">
+            <Label htmlFor="room-link" className="text-xs font-semibold text-muted-foreground">Share Room Link</Label>
+            <div className="flex gap-2">
+              <Input id="room-link" type="text" readOnly value={roomUrl} className="bg-muted/50" />
+              <Button variant="outline" size="icon" onClick={handleCopyLink}>
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
           
           <Tabs value={userMode} onValueChange={(v) => setUserMode(v as UserMode)} className="flex-1 flex flex-col">
             <TabsList className="grid w-full grid-cols-2">
