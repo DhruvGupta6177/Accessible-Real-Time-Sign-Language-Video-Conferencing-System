@@ -2,20 +2,38 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Video, LogIn } from 'lucide-react';
+import { LogIn, Plus, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuth } from '@/firebase';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { useAuth, useUser, useFirestore, addDocumentNonBlocking } from '@/firebase';
 import { signOut } from 'firebase/auth';
+import { collection } from 'firebase/firestore';
+import { useMeetings } from '@/hooks/use-meetings';
+import { format } from 'date-fns';
 
 export default function DashboardPage() {
   const [joinRoomId, setJoinRoomId] = useState('');
   const router = useRouter();
   const auth = useAuth();
+  const firestore = useFirestore();
+  const { user } = useUser();
+  const { meetings, isLoading } = useMeetings();
 
-  const handleCreateMeeting = () => {
+  const handleCreateMeeting = async () => {
+    if (!user) return;
+    
     const newRoomId = Math.random().toString(36).substring(2, 9);
+    const meetingsColRef = collection(firestore, 'users', user.uid, 'meetings');
+    
+    const meetingData = {
+      hostId: user.uid,
+      id: newRoomId,
+      inviteLink: `${window.location.origin}/room/${newRoomId}`,
+      startTime: new Date().toISOString(),
+    };
+    
+    await addDocumentNonBlocking(meetingsColRef, meetingData);
     router.push(`/room/${newRoomId}`);
   };
 
@@ -37,45 +55,80 @@ export default function DashboardPage() {
           Logout
         </Button>
       </div>
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold">Welcome to LinguaSign</CardTitle>
-          <CardDescription>Start a new meeting or join an existing one.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <Button onClick={handleCreateMeeting} className="w-full" size="lg">
-              <Video className="mr-2" />
-              Create New Meeting
-            </Button>
-          </div>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
+      <div className="flex flex-col lg:flex-row gap-8 w-full max-w-4xl">
+        <Card className="w-full lg:w-1/3">
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold">New Meeting</CardTitle>
+            <CardDescription>Start or join a video call.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Button onClick={handleCreateMeeting} className="w-full" size="lg">
+                <Plus className="mr-2" />
+                Create New Meeting
+              </Button>
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">
-                Or
-              </span>
-            </div>
-          </div>
 
-          <div className="space-y-2">
-            <Input
-              type="text"
-              placeholder="Enter meeting link or ID"
-              value={joinRoomId}
-              onChange={(e) => setJoinRoomId(e.target.value)}
-              className="text-center"
-            />
-            <Button onClick={handleJoinMeeting} variant="secondary" className="w-full" disabled={!joinRoomId.trim()}>
-              <LogIn className="mr-2" />
-              Join Meeting
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">
+                  Or
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Input
+                type="text"
+                placeholder="Enter meeting link or ID"
+                value={joinRoomId}
+                onChange={(e) => setJoinRoomId(e.target.value)}
+                className="text-center"
+              />
+              <Button onClick={handleJoinMeeting} variant="secondary" className="w-full" disabled={!joinRoomId.trim()}>
+                <LogIn className="mr-2" />
+                Join Meeting
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="w-full lg:w-2/3">
+          <CardHeader>
+            <CardTitle>Meeting History</CardTitle>
+            <CardDescription>Review your past meetings.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading && <p>Loading meetings...</p>}
+            {!isLoading && (!meetings || meetings.length === 0) && (
+              <div className="text-center text-muted-foreground py-8">
+                <Video className="mx-auto h-12 w-12" />
+                <p className="mt-4">You haven&apos;t created any meetings yet.</p>
+              </div>
+            )}
+            {!isLoading && meetings && meetings.length > 0 && (
+              <ul className="space-y-3">
+                {meetings.map((meeting) => (
+                  <li key={meeting.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div className="flex flex-col">
+                      <span className="font-semibold">Room ID: {meeting.id}</span>
+                       <span className="text-sm text-muted-foreground">
+                        {format(new Date(meeting.startTime), "PPP p")}
+                      </span>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => router.push(`/room/${meeting.id}`)}>
+                      Rejoin
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
