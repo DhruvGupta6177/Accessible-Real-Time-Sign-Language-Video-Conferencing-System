@@ -12,6 +12,7 @@ import { signOut } from 'firebase/auth';
 import { collection } from 'firebase/firestore';
 import { useMeetings } from '@/hooks/use-meetings';
 import { format } from 'date-fns';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export default function DashboardPage() {
   const [joinRoomId, setJoinRoomId] = useState('');
@@ -51,7 +52,8 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-       <div className="absolute top-4 right-4">
+       <div className="absolute top-4 right-4 flex items-center gap-4">
+        <ThemeToggle />
         <Button variant="outline" onClick={handleLogout}>
           Logout
         </Button>
