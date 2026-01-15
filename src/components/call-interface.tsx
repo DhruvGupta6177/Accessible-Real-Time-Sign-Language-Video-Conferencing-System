@@ -15,10 +15,9 @@ import { signToTextTranslation } from '@/ai/flows/sign-to-text-translation';
 import { textToSpeechForHearingUser } from '@/ai/flows/text-to-speech-for-hearing-user';
 import { speechToSignAvatarForDeafUser } from '@/ai/flows/speech-to-sign-avatar-for-deaf-user';
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import ShareDialog from "./share-dialog";
 
 export type UserMode = "hearing" | "deaf";
 type Caption = {
@@ -48,7 +47,6 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
   const [manualInput, setManualInput] = useState("");
   const [isLoading, setIsLoading] = useState<Record<string, boolean>>({});
   const [roomUrl, setRoomUrl] = useState('');
-  const [isShareApiSupported, setIsShareApiSupported] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
 
@@ -65,10 +63,6 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
   const setLoading = (key: string, value: boolean) => setIsLoading(prev => ({...prev, [key]: value}));
 
   useEffect(() => {
-    if (navigator.share) {
-      setIsShareApiSupported(true);
-    }
-
     const startCall = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -180,30 +174,6 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
     setManualInput("");
   };
 
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(roomUrl);
-    toast({ title: "Link Copied!", description: "The room link has been copied to your clipboard." });
-  };
-
-  const handleShareLink = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Join my LinguaSign Meeting',
-          text: 'Click the link to join the video call.',
-          url: roomUrl,
-        });
-        toast({ title: "Shared successfully!" });
-      } catch (error) {
-        toast({
-          variant: "destructive",
-          title: "Share failed",
-          description: "Could not share the link. Please try copying it instead.",
-        });
-      }
-    }
-  };
-
   useEffect(() => {
     if (!localStream) {
       mediaRecorderRef.current?.stop();
@@ -299,27 +269,20 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
       <div className={cn("flex flex-col transition-all duration-300 ease-in-out", isSidebarOpen ? "w-[400px]" : "w-0")}>
         <Card className={cn("m-4 flex-1 flex flex-col rounded-xl shadow-lg overflow-hidden transition-opacity duration-300", isSidebarOpen ? "opacity-100" : "opacity-0")}>
           <CardContent className="p-4 flex-1 flex flex-col gap-4">
-            <div className='flex items-center gap-2 text-sm font-semibold text-muted-foreground'>
-                  {userMode === 'hearing' ? <Ear /> : <Hand />}
-                  You are in {userMode === 'hearing' ? 'Hearing' : 'Deaf/Mute'} Mode
-              </div>
+            <div className="flex justify-between items-center">
+                <div className='flex items-center gap-2 text-sm font-semibold text-muted-foreground'>
+                    {userMode === 'hearing' ? <Ear /> : <Hand />}
+                    You are in {userMode === 'hearing' ? 'Hearing' : 'Deaf/Mute'} Mode
+                </div>
+                <ShareDialog roomUrl={roomUrl}>
+                    <Button variant="outline">
+                        <Share2 className="mr-2 h-4 w-4" />
+                        Share
+                    </Button>
+                </ShareDialog>
+            </div>
             
             <Separator />
-            
-            <div className="space-y-2">
-              <Label htmlFor="room-link" className="text-xs font-semibold text-muted-foreground">Share Room Link</Label>
-              <div className="flex gap-2">
-                <Input id="room-link" type="text" readOnly value={roomUrl} className="bg-muted/50" />
-                <Button variant="outline" size="icon" onClick={handleCopyLink}>
-                  <Copy className="h-4 w-4" />
-                </Button>
-                {isShareApiSupported && (
-                  <Button variant="outline" size="icon" onClick={handleShareLink}>
-                    <Share2 className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            </div>
             
             <div className="flex-1 flex flex-col min-h-0 gap-4">
               {userMode === 'hearing' ? (
@@ -362,5 +325,3 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
     </div>
   );
 }
-
-    
