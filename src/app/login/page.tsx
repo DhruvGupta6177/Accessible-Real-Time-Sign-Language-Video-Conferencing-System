@@ -12,8 +12,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { initiateEmailSignIn } from '@/firebase';
 import { useAuth } from '@/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { Ear } from 'lucide-react';
 
 const loginSchema = z.object({
@@ -40,9 +40,8 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormValues) => {
     setLoading(true);
     try {
-      initiateEmailSignIn(auth, data.email, data.password);
-      // The onAuthStateChanged listener in FirebaseProvider will handle the redirect
-      // For now we assume it will work and don't router.push here.
+      await signInWithEmailAndPassword(auth, data.email, data.password);
+      router.push('/dashboard');
     } catch (error: any) {
       toast({
         variant: 'destructive',
