@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { Copy, Ear, Hand, Link as LinkIcon, Mic, MicOff, PhoneOff, Send, Video as VideoIcon, VideoOff, Volume2 } from "lucide-react";
+import { Copy, Ear, Hand, Link as LinkIcon, Mic, MicOff, PhoneOff, Send, Share2, Video as VideoIcon, VideoOff, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -49,6 +49,7 @@ export default function CallInterface({ roomId }: { roomId: string }) {
   const [manualInput, setManualInput] = useState("");
   const [isLoading, setIsLoading] = useState<Record<string, boolean>>({});
   const [roomUrl, setRoomUrl] = useState('');
+  const [isShareApiSupported, setIsShareApiSupported] = useState(false);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
@@ -63,6 +64,10 @@ export default function CallInterface({ roomId }: { roomId: string }) {
   const setLoading = (key: string, value: boolean) => setIsLoading(prev => ({...prev, [key]: value}));
 
   useEffect(() => {
+    if (navigator.share) {
+      setIsShareApiSupported(true);
+    }
+
     const startCall = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -179,6 +184,25 @@ export default function CallInterface({ roomId }: { roomId: string }) {
     toast({ title: "Link Copied!", description: "The room link has been copied to your clipboard." });
   };
 
+  const handleShareLink = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Join my LinguaSign Meeting',
+          text: 'Click the link to join the video call.',
+          url: roomUrl,
+        });
+        toast({ title: "Shared successfully!" });
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Share failed",
+          description: "Could not share the link. Please try copying it instead.",
+        });
+      }
+    }
+  };
+
   useEffect(() => {
     if (!localStream) {
       mediaRecorderRef.current?.stop();
@@ -275,6 +299,11 @@ export default function CallInterface({ roomId }: { roomId: string }) {
               <Button variant="outline" size="icon" onClick={handleCopyLink}>
                 <Copy className="h-4 w-4" />
               </Button>
+              {isShareApiSupported && (
+                <Button variant="outline" size="icon" onClick={handleShareLink}>
+                  <Share2 className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </div>
           
