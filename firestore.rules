@@ -1,0 +1,127 @@
+/**
+ * Core Philosophy: This ruleset enforces a strict user-ownership model. All data,
+ * including user profiles and meetings, is private and accessible only to the
+ * user who owns it. There is no public or shared data.
+ *
+ * Data Structure: The data is organized hierarchically. All user-specific data,
+ * including meetings, is nested within a top-level `users` collection under a
+ * document corresponding to the user's UID (e.g., `/users/{userId}/meetings/{meetingId}`).
+ * This path-based structure is the primary mechanism for enforcing security.
+ *
+ * Key Security Decisions:
+ * - User Isolation: Users are strictly isolated from one another. A user cannot
+ *   read, write, or even list the data of any other user.
+ * - No User Listing: The top-level `/users` collection cannot be listed by any
+ *   client to protect user privacy and prevent enumeration attacks.
+ * - Self-Service Profile: A newly authenticated user is permitted to create their
+ *   own user profile document, but no one else's.
+ *
+ * Denormalization for Authorization: Denormalization is not required for this
+ * security model. Authorization is derived directly from the document path
+ * (`{userId}`), which provides a simple and highly performant way to check for
+ * ownership without needing extra document reads (`get()`).
+ *
+ * Structural Segregation: The data model naturally segregates each user's data
+ * into their own document tree, preventing data access conflicts and simplifying
+ * list queries. A user listing their meetings is inherently scoped to their own
+ * data path.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions for improved readability and maintainability.
+
+    /**
+     * Checks if a user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the currently authenticated user is the owner of the resource.
+     * @param userId The UID of the user to check against.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    /**
+     * Checks if a user is the owner of an EXISTING document.
+     * CRITICAL: Used for update/delete to prevent acting on non-existent data.
+     * @param userId The UID of the user to check against.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+    
+    /**
+     * Validates that the user document's internal ID matches the document path ID
+     * upon creation. This enforces relational integrity.
+     */
+    function hasValidUserCreateData(userId) {
+        return request.resource.data.id == userId;
+    }
+    
+    /**
+     * Validates that the user document's internal ID is immutable on update.
+     */
+    function hasValidUserUpdateData() {
+        return request.resource.data.id == resource.data.id;
+    }
+
+    /**
+     * Validates that the meeting document's internal hostId matches the user's
+     * UID in the path. This enforces relational integrity.
+     */
+    function hasValidMeetingCreateData(userId) {
+      return request.resource.data.hostId == userId;
+    }
+
+    /**
+     * Validates that the meeting document's hostId is immutable on update.
+     */
+    function hasValidMeetingUpdateData() {
+      return request.resource.data.hostId == resource.data.hostId;
+    }
+
+    /**
+     * @description Manages access to a user's own profile document. It allows a
+     *   user to create their own profile and subsequently manage it, but prevents
+     *   access by any other user and disallows listing the top-level collection.
+     * @path /users/{userId}
+     * @allow (create) A new user creating their own profile: `/users/user_abc` where auth.uid is 'user_abc'.
+     * @allow (get) A user reading their own profile: `/users/user_abc` where auth.uid is 'user_abc'.
+     * @deny (list) Any user attempting to list all user profiles.
+     * @deny (update) A user trying to modify another user's profile: `/users/user_xyz` where auth.uid is 'user_abc'.
+     * @principle Enforces strict data ownership and allows for user self-registration.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && hasValidUserCreateData(userId);
+      allow update: if isExistingOwner(userId) && hasValidUserUpdateData();
+      allow delete: if isExistingOwner(userId);
+
+      /**
+       * @description Secures the meeting documents belonging to a specific user.
+       *   Only the owner of the data tree (the user specified in `{userId}`)
+       *   can read, list, create, update, or delete their own meetings.
+       * @path /users/{userId}/meetings/{meetingId}
+       * @allow (create) A user creating a new meeting in their own subcollection: `/users/user_abc/meetings/meeting_123` where auth.uid is 'user_abc'.
+       * @allow (list) A user listing all of their own meetings.
+       * @deny (get) A user trying to read a meeting belonging to another user: `/users/user_xyz/meetings/meeting_456` where auth.uid is 'user_abc'.
+       * @deny (delete) A user trying to delete another user's meeting.
+       * @principle Restricts access to a user's own data tree (path-based ownership).
+       */
+      match /meetings/{meetingId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && hasValidMeetingCreateData(userId);
+        allow update: if isExistingOwner(userId) && hasValidMeetingUpdateData();
+        allow delete: if isExistingOwner(userId);
+      }
+    }
+  }
+}

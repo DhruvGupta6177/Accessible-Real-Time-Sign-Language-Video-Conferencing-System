@@ -1,0 +1,119 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the LinguaSign platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user entity."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the user.",
+          "format": "email"
+        },
+        "username": {
+          "type": "string",
+          "description": "Username of the user."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user account was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "username",
+        "createdAt"
+      ]
+    },
+    "Meeting": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Meeting",
+      "type": "object",
+      "description": "Represents a video meeting on the LinguaSign platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the meeting entity."
+        },
+        "hostId": {
+          "type": "string",
+          "description": "Reference to the User who created and hosts the meeting. (Relationship: User 1:N Meeting)"
+        },
+        "inviteLink": {
+          "type": "string",
+          "description": "Unique link to join the meeting."
+        },
+        "startTime": {
+          "type": "string",
+          "description": "Timestamp indicating when the meeting started.",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "description": "Timestamp indicating when the meeting ended.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "hostId",
+        "inviteLink",
+        "startTime"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profile information. Path-based ownership ensures only the user can access their own profile.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/meetings/{meetingId}",
+        "definition": {
+          "entityName": "Meeting",
+          "schema": {
+            "$ref": "#/backend/entities/Meeting"
+          },
+          "description": "Stores meeting details created by the user. Path-based ownership ensures only the user can access and manage their own meetings.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "meetingId",
+              "description": "The unique identifier of the meeting."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "This Firestore data structure is designed to support the LinguaSign platform, prioritizing security, scalability, and debuggability as per the outlined core design principles and strategy mandates. The structure focuses on authorization independence, structural segregation, and clear access modeling. \n\n**Authorization Independence:** To avoid hierarchical authorization dependencies and ensure atomic operations, the structure utilizes path-based ownership for user-related data (meetings). There is no need for denormalization in this simple example.\n\n**Structural Segregation:**  The data is segregated based on ownership and access needs. User data is stored under `/users/{userId}`, and meetings are stored under `/users/{userId}/meetings/{meetingId}`.\n\n**Access Modeling:** Path-based ownership is used for meetings. This means a user can only access meetings they created. This simplifies security rules and enhances data privacy.\n\n**QAPs (Rules are not Filters):** The structure enables secure list operations. Listing meetings is scoped to the user's own meetings (`/users/{userId}/meetings`). Since there are no global roles or collaborative data, additional collections or membership maps are not needed."
+  }
+}
