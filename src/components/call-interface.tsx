@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Copy, Ear, Hand, Link as LinkIcon, Mic, MicOff, PhoneOff, Send, Share2, PanelRightOpen, PanelRightClose, Video as VideoIcon, VideoOff, Volume2 } from "lucide-react";
+import { Copy, Ear, Hand, Link as LinkIcon, Mic, MicOff, PhoneOff, Send, Share2, PanelRightOpen, PanelRightClose, Video as VideoIcon, VideoOff, Volume2, CircleDot, Users, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -18,6 +18,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import ShareDialog from "./share-dialog";
+import { useUser } from "@/firebase";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 export type UserMode = "hearing" | "deaf";
 type Caption = {
@@ -38,6 +40,7 @@ const blobToDataUrl = (blob: Blob): Promise<string> => {
 export default function CallInterface({ roomId, initialUserMode }: { roomId: string, initialUserMode: UserMode }) {
   const { toast } = useToast();
   const router = useRouter();
+  const { user } = useUser();
   const [userMode, setUserMode] = useState<UserMode>(initialUserMode);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [isMicMuted, setIsMicMuted] = useState(true);
@@ -48,6 +51,7 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
   const [isLoading, setIsLoading] = useState<Record<string, boolean>>({});
   const [roomUrl, setRoomUrl] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isRecording, setIsRecording] = useState(false);
 
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -55,6 +59,12 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
 
   const localUserPlaceholder = PlaceHolderImages.find(p => p.id === 'local-user-placeholder')!;
   const remoteUserPlaceholder = PlaceHolderImages.find(p => p.id === 'remote-user-placeholder')!;
+  const userAvatarPlaceholder = PlaceHolderImages.find(p => p.id === 'user-avatar-placeholder');
+
+  const participants = [
+    { name: user?.email || 'You', isMe: true },
+    { name: 'Remote User', isMe: false }
+  ];
 
   const addCaption = (text: string, source: "local" | "remote") => {
     setCaptions(prev => [...prev, { id: Date.now(), text, source }]);
@@ -112,6 +122,14 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
     }
   };
 
+  const handleToggleRecording = () => {
+    setIsRecording(prev => !prev);
+    toast({
+        title: isRecording ? "Recording Stopped" : "Recording Started",
+        description: isRecording ? "The meeting recording has been stopped." : "The meeting is now being recorded."
+    })
+  };
+
   const processSignToText = useCallback(async (videoBlob: Blob) => {
     if(isLoading['sign']) return;
     setLoading('sign', true);
@@ -146,7 +164,7 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
       const avatarResult = await speechToSignAvatarForDeafUser({ spokenText: result.captions });
       setAvatarCommands(avatarResult.avatarAnimationCommands);
       setLoading('avatar', false);
-    } catch (e) {
+    } catch (e) => {
       toast({ variant: 'destructive', title: 'Speech Recognition Error' });
     } finally {
       setLoading('speech', false);
@@ -247,6 +265,12 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
           <div className="absolute bottom-24 md:bottom-6 right-6 w-1/4 max-w-[250px] min-w-[150px] shadow-lg rounded-lg border-2 border-primary z-20">
             <VideoPlayer stream={localStream} placeholder={localUserPlaceholder} isMuted isPip />
           </div>
+          {isRecording && (
+              <div className="absolute top-4 right-4 z-20 flex items-center gap-2 bg-destructive/80 text-destructive-foreground px-3 py-1 rounded-md">
+                  <CircleDot className="w-4 h-4 animate-pulse" />
+                  <span>REC</span>
+              </div>
+          )}
         </div>
 
         <div className="absolute bottom-0 left-0 right-0 z-20 flex justify-center p-4">
@@ -256,6 +280,10 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
               </Button>
               <Button variant={isVideoOn ? "default" : "outline"} size="icon" className="w-12 h-12 rounded-full" onClick={handleToggleVideo}>
                 {isVideoOn ? <VideoIcon/> : <VideoOff/>}
+              </Button>
+              <Separator orientation="vertical" className="h-8" />
+              <Button variant="outline" size="icon" className="w-12 h-12 rounded-full" onClick={handleToggleRecording}>
+                <CircleDot className={cn(isRecording && "text-destructive")}/>
               </Button>
               <Separator orientation="vertical" className="h-8" />
               <Button variant="destructive" size="icon" className="w-14 h-12 rounded-full" onClick={handleStopCall}>
@@ -285,6 +313,23 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
                 </ShareDialog>
             </div>
             
+            <Separator />
+
+             <div className="flex flex-col gap-2">
+                <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2"><Users className="w-4 h-4"/>Participants ({participants.length})</h3>
+                <div className="space-y-2">
+                    {participants.map((p, i) => (
+                        <div key={i} className="flex items-center gap-2 p-2 rounded-md bg-muted/50">
+                            <Avatar className="h-8 w-8">
+                                {userAvatarPlaceholder && <AvatarImage src={p.isMe ? localUserPlaceholder.imageUrl : remoteUserPlaceholder.imageUrl} alt={p.name} />}
+                                <AvatarFallback><User /></AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium text-sm">{p.name}</span>
+                        </div>
+                    ))}
+                </div>
+             </div>
+
             <Separator />
             
             <div className="flex-1 flex flex-col min-h-0 gap-4">

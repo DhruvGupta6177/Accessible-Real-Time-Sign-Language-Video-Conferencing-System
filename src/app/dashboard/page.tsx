@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState }from 'react';
 import { useRouter } from 'next/navigation';
-import { LogIn, Plus, Video } from 'lucide-react';
+import { LogIn, Plus, Video, User as UserIcon } from 'lucide-react';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,6 +14,8 @@ import { collection } from 'firebase/firestore';
 import { useMeetings } from '@/hooks/use-meetings';
 import { format } from 'date-fns';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export default function DashboardPage() {
   const [joinRoomId, setJoinRoomId] = useState('');
@@ -21,6 +24,8 @@ export default function DashboardPage() {
   const firestore = useFirestore();
   const { user } = useUser();
   const { meetings, isLoading } = useMeetings();
+  const userAvatarPlaceholder = PlaceHolderImages.find(p => p.id === 'user-avatar-placeholder');
+
 
   const handleCreateMeeting = async () => {
     if (!user) return;
@@ -58,7 +63,17 @@ export default function DashboardPage() {
           Logout
         </Button>
       </div>
-      <div className="flex flex-col lg:flex-row gap-8 w-full max-w-4xl">
+       <div className="absolute top-4 left-4 flex items-center gap-4">
+        <Avatar>
+          {userAvatarPlaceholder && <AvatarImage src={userAvatarPlaceholder.imageUrl} alt={user?.displayName || 'User'} />}
+          <AvatarFallback><UserIcon /></AvatarFallback>
+        </Avatar>
+        <div className='flex flex-col'>
+          <span className='text-sm font-semibold'>Welcome back,</span>
+          <span className='text-lg font-bold'>{user?.email || 'User'}</span>
+        </div>
+      </div>
+      <div className="flex flex-col lg:flex-row gap-8 w-full max-w-4xl mt-24">
         <Card className="w-full lg:w-1/3">
           <CardHeader>
             <CardTitle className="text-2xl font-bold">New Meeting</CardTitle>

@@ -17,6 +17,12 @@
       "description": "Abstract background image for the hero section.",
       "imageUrl": "https://images.unsplash.com/photo-1587370286959-23439ee6a87e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxjb21tdW5pY2F0aW9uJTIwdGVjaG5vbG9neXxlbnwwfHx8fDE3Njg0NjcyNTF8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "communication technology"
+    },
+    {
+      "id": "user-avatar-placeholder",
+      "description": "A placeholder image for a user's avatar.",
+      "imageUrl": "https://images.unsplash.com/photo-1639149888905-fb39731f2e6c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHx1c2VyJTIwYXZhdGFyfGVufDB8fHx8MTc2ODQ1MDEyNnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "user avatar"
     }
   ]
 }
