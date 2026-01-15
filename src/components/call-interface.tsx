@@ -246,12 +246,14 @@ export default function CallInterface() {
   return (
     <div className="flex flex-col md:flex-row h-screen bg-background text-foreground">
       <audio ref={audioPlayerRef} className="hidden" />
-      <div className="flex-1 relative flex items-center justify-center p-4">
-        <VideoPlayer stream={null} placeholder={remoteUserPlaceholder} />
-        <div className="absolute bottom-6 right-6 w-1/4 max-w-[250px] shadow-lg rounded-lg border-2 border-primary">
-          <VideoPlayer stream={localStream} placeholder={localUserPlaceholder} isMuted isPip />
+      <main className="flex-1 flex flex-col relative">
+        <div className="flex-1 relative flex items-center justify-center p-4">
+          <VideoPlayer stream={null} placeholder={remoteUserPlaceholder} />
+          <div className="absolute bottom-6 right-6 w-1/4 max-w-[250px] shadow-lg rounded-lg border-2 border-primary">
+            <VideoPlayer stream={localStream} placeholder={localUserPlaceholder} isMuted isPip />
+          </div>
         </div>
-      </div>
+      </main>
       
       <Card className="w-full md:w-[400px] m-4 md:m-0 md:mr-4 md:my-4 flex flex-col rounded-xl shadow-lg">
         <CardContent className="p-4 flex-1 flex flex-col gap-4">
