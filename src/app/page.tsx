@@ -91,7 +91,7 @@ export default function LandingPage() {
           <section className="flex flex-col items-center justify-center text-center px-4 py-20 md:py-32">
             <div className="max-w-3xl space-y-6">
               <h1 
-                className="text-5xl md:text-7xl font-bold font-headline tracking-tight text-foreground animate-fade-in-up"
+                className="text-5xl md:text-7xl font-bold font-body tracking-tight text-foreground animate-fade-in-up"
                 style={{ animationDelay: '0.2s' }}
               >
                 Bridge Worlds, One Sign at a Time.
