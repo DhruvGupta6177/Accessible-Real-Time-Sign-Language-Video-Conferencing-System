@@ -74,22 +74,12 @@ export default function LandingPage() {
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden bg-background">
        <div 
-        className="pointer-events-none fixed inset-0 z-20 transition-transform duration-300 ease-out"
+        className="pointer-events-none fixed inset-0 z-30 transition-transform duration-300 ease-out"
         style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
       >
-        <div className="h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-900/50 dark:bg-slate-800/50 blur-2xl" />
+        <div className="h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-900/50 dark:bg-slate-800/50 blur-xl" />
       </div>
       <div className="absolute inset-0 bg-gradient-animation z-0"></div>
-      {heroImage && (
-         <Image
-          src={heroImage.imageUrl}
-          alt={heroImage.description}
-          data-ai-hint={heroImage.imageHint}
-          fill
-          className="object-cover opacity-10 dark:opacity-15 z-0"
-        />
-      )}
-       <Bot className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 text-primary/5 dark:text-primary/10 -z-10 floating-bot" />
       
       <div className="relative z-10 flex flex-col min-h-screen">
         <header className="py-4 px-6 md:px-10 flex justify-between items-center">
@@ -117,7 +107,7 @@ export default function LandingPage() {
                 Bridge Worlds, One Sign at a Time.
               </h1>
               <p 
-                className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto animate-fade-in-up"
+                className="text-lg md:text-xl text-foreground/90 max-w-2xl mx-auto animate-fade-in-up"
                 style={{ animationDelay: '0.4s' }}
               >
                 LinguaSign is a revolutionary platform that translates sign language and speech in real-time, making video communication seamless and accessible for everyone.
