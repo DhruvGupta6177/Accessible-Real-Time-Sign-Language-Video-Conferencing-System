@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Copy, Ear, Hand, Link as LinkIcon, Mic, MicOff, PhoneOff, Send, Share2, PanelRightOpen, PanelRightClose, Video as VideoIcon, VideoOff, Volume2, CircleDot, Users, User, ChevronDown, ChevronUp, Search } from "lucide-react";
+import { Copy, Ear, Hand, Link as LinkIcon, Mic, MicOff, PhoneOff, Send, Share2, PanelRightOpen, PanelRightClose, Video as VideoIcon, VideoOff, Volume2, CircleDot, Users, User, ChevronDown, ChevronUp, Search, ScreenShare, ScreenShareOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -45,6 +45,8 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
   const { user } = useUser();
   const [userMode, setUserMode] = useState<UserMode>(initialUserMode);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [isMicMuted, setIsMicMuted] = useState(true);
   const [isVideoOn, setIsVideoOn] = useState(true);
   const [captions, setCaptions] = useState<Caption[]>([]);
@@ -100,13 +102,16 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
 
     return () => {
       localStream?.getTracks().forEach(track => track.stop());
+      screenStream?.getTracks().forEach(track => track.stop());
     }
   }, [roomId, toast]);
 
 
   const handleStopCall = () => {
     localStream?.getTracks().forEach(track => track.stop());
+    screenStream?.getTracks().forEach(track => track.stop());
     setLocalStream(null);
+    setScreenStream(null);
     setCaptions([]);
     setAvatarCommands("");
     router.push('/dashboard');
@@ -136,6 +141,27 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
         title: isRecording ? "Recording Stopped" : "Recording Started",
         description: isRecording ? "The meeting recording has been stopped." : "The meeting is now being recorded."
     })
+  };
+
+  const handleToggleScreenShare = async () => {
+    if (isScreenSharing) {
+      screenStream?.getTracks().forEach(track => track.stop());
+      setScreenStream(null);
+      setIsScreenSharing(false);
+    } else {
+      try {
+        const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        setScreenStream(stream);
+        setIsScreenSharing(true);
+        stream.getVideoTracks()[0].onended = () => {
+            setScreenStream(null);
+            setIsScreenSharing(false);
+        };
+      } catch (error) {
+        console.error("Error starting screen share", error);
+        toast({ variant: 'destructive', title: 'Screen Share Error', description: 'Could not start screen sharing.' });
+      }
+    }
   };
 
   const processSignToText = useCallback(async (videoBlob: Blob) => {
@@ -203,7 +229,8 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
   };
 
   useEffect(() => {
-    if (!localStream) {
+    const streamForRecorder = isScreenSharing ? screenStream : localStream;
+    if (!streamForRecorder) {
       mediaRecorderRef.current?.stop();
       return;
     }
@@ -212,7 +239,7 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
     let processData: (blob: Blob) => void;
     let timeslice: number;
   
-    if (userMode === 'deaf' && isVideoOn) {
+    if (userMode === 'deaf' && isVideoOn && !isScreenSharing) {
       options = { mimeType: 'video/webm; codecs=vp9' };
       processData = processSignToText;
       timeslice = 5000;
@@ -226,7 +253,7 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
     }
   
     try {
-      const recorder = new MediaRecorder(localStream, options);
+      const recorder = new MediaRecorder(streamForRecorder, options);
       mediaRecorderRef.current = recorder;
   
       recorder.ondataavailable = event => {
@@ -238,11 +265,10 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
       recorder.start(timeslice);
     } catch (e) {
       console.error("MediaRecorder error:", e);
-      // Fallback for video
       if(userMode === 'deaf') {
         options = { mimeType: 'video/webm' };
         try {
-          const recorder = new MediaRecorder(localStream, options);
+          const recorder = new MediaRecorder(streamForRecorder, options);
           mediaRecorderRef.current = recorder;
           recorder.ondataavailable = event => {
             if (event.data.size > 0) processData(event.data)
@@ -258,7 +284,10 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
     return () => {
       mediaRecorderRef.current?.stop();
     };
-  }, [localStream, userMode, isMicMuted, isVideoOn, processSpeechToText, processSignToText, toast]);
+  }, [localStream, screenStream, isScreenSharing, userMode, isMicMuted, isVideoOn, processSpeechToText, processSignToText, toast]);
+
+  const mainViewStream = isScreenSharing ? screenStream : null;
+  const pipStream = isScreenSharing ? localStream : localStream;
 
   return (
     <div className="flex h-screen bg-background text-foreground">
@@ -271,9 +300,9 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
           </h2>
         </div>
         <div className="flex-1 relative flex items-center justify-center p-4 bg-black">
-          <VideoPlayer stream={null} placeholder={remoteUserPlaceholder} />
+          <VideoPlayer stream={mainViewStream} placeholder={isScreenSharing ? { ...remoteUserPlaceholder, description: "Your screen share"} : remoteUserPlaceholder} />
           <div className="absolute bottom-24 md:bottom-6 right-6 w-1/4 max-w-[250px] min-w-[150px] shadow-lg rounded-lg border-2 border-primary z-20">
-            <VideoPlayer stream={localStream} placeholder={localUserPlaceholder} isMuted isPip />
+            <VideoPlayer stream={pipStream} placeholder={localUserPlaceholder} isMuted isPip />
           </div>
           {isRecording && (
               <div className="absolute top-4 right-4 z-20 flex items-center gap-2 bg-destructive/80 text-destructive-foreground px-3 py-1 rounded-md">
@@ -290,6 +319,9 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
               </Button>
               <Button variant={isVideoOn ? "default" : "outline"} size="icon" className="w-12 h-12 rounded-full" onClick={handleToggleVideo}>
                 {isVideoOn ? <VideoIcon/> : <VideoOff/>}
+              </Button>
+               <Button variant={isScreenSharing ? "default" : "outline"} size="icon" className="w-12 h-12 rounded-full" onClick={handleToggleScreenShare}>
+                {isScreenSharing ? <ScreenShareOff /> : <ScreenShare />}
               </Button>
               <Separator orientation="vertical" className="h-8" />
               <Button variant="outline" size="icon" className="w-12 h-12 rounded-full" onClick={handleToggleRecording}>
@@ -399,3 +431,5 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
     </div>
   );
 }
+
+    
