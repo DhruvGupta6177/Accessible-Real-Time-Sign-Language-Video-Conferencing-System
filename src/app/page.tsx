@@ -77,7 +77,7 @@ export default function LandingPage() {
         className="pointer-events-none fixed inset-0 z-20 transition-transform duration-300 ease-out"
         style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
       >
-        <div className="h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/20 blur-3xl" />
+        <div className="h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-900/40 dark:bg-slate-800/40 blur-3xl" />
       </div>
       <div className="absolute inset-0 bg-gradient-animation z-0"></div>
       {heroImage && (
