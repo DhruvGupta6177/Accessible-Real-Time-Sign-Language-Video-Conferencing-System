@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { LogIn, Plus, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useAuth, useUser, useFirestore, addDocumentNonBlocking } from '@/firebase';
 import { signOut } from 'firebase/auth';
