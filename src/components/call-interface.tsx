@@ -431,5 +431,3 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
     </div>
   );
 }
-
-    
