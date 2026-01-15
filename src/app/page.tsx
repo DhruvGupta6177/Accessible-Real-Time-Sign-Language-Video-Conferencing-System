@@ -69,6 +69,7 @@ export default function LandingPage() {
           className="object-cover opacity-5 dark:opacity-10 z-0"
         />
       )}
+       <Bot className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 text-primary/5 dark:text-primary/10 -z-10 floating-bot" />
       
       <div className="relative z-10 flex flex-col min-h-screen">
         <header className="py-4 px-6 md:px-10 flex justify-between items-center">

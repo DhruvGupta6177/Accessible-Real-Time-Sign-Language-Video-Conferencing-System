@@ -77,6 +77,9 @@
   .dark .bg-gradient-animation {
     @apply from-primary/10 via-background to-secondary/10;
   }
+  .floating-bot {
+    animation: float-orbit 15s ease-in-out infinite;
+  }
 }
 
 @keyframes gradient-move {
@@ -99,5 +102,28 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes float-orbit {
+  0% {
+    transform: translateY(0px) translateX(0px) scale(1);
+    opacity: 0.1;
+  }
+  25% {
+    transform: translateY(20px) translateX(-15px) scale(1.05);
+    opacity: 0.15;
+  }
+  50% {
+    transform: translateY(0px) translateX(20px) scale(1);
+    opacity: 0.1;
+  }
+  75% {
+    transform: translateY(-20px) translateX(15px) scale(0.95);
+    opacity: 0.05;
+  }
+  100% {
+    transform: translateY(0px) translateX(0px) scale(1);
+    opacity: 0.1;
   }
 }
