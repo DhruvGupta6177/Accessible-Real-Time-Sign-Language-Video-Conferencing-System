@@ -237,7 +237,10 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
       <audio ref={audioPlayerRef} className="hidden" />
       <main className="flex-1 flex flex-col relative overflow-hidden">
         <div className="absolute top-4 left-4 z-20">
-          <h2 className="font-headline text-2xl font-bold text-white" style={{textShadow: '0 0 5px black'}}>LinguaSign</h2>
+          <h2 className="text-xl font-bold text-white flex items-center gap-2" style={{textShadow: '0 0 8px rgba(0,0,0,0.7)'}}>
+            <Ear className="w-6 h-6" />
+            LinguaSign
+          </h2>
         </div>
         <div className="flex-1 relative flex items-center justify-center p-4 bg-black">
           <VideoPlayer stream={null} placeholder={remoteUserPlaceholder} />
@@ -266,8 +269,8 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
         </div>
       </main>
       
-      <div className={cn("flex flex-col transition-all duration-300 ease-in-out", isSidebarOpen ? "w-[400px]" : "w-0")}>
-        <Card className={cn("m-4 flex-1 flex flex-col rounded-xl shadow-lg overflow-hidden transition-opacity duration-300", isSidebarOpen ? "opacity-100" : "opacity-0")}>
+      <div className={cn("flex flex-col transition-all duration-300 ease-in-out", isSidebarOpen ? "w-full max-w-sm" : "w-0")}>
+        <Card className={cn("m-2 flex-1 flex flex-col rounded-xl shadow-lg overflow-hidden transition-opacity duration-300", isSidebarOpen ? "opacity-100" : "opacity-0")}>
           <CardContent className="p-4 flex-1 flex flex-col gap-4">
             <div className="flex justify-between items-center">
                 <div className='flex items-center gap-2 text-sm font-semibold text-muted-foreground'>
@@ -275,7 +278,7 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
                     You are in {userMode === 'hearing' ? 'Hearing' : 'Deaf/Mute'} Mode
                 </div>
                 <ShareDialog roomUrl={roomUrl}>
-                    <Button variant="outline">
+                    <Button variant="outline" size="sm">
                         <Share2 className="mr-2 h-4 w-4" />
                         Share
                     </Button>
@@ -295,9 +298,9 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
                     <div className="flex-1 flex flex-col gap-2">
                         <h3 className="text-sm font-semibold text-muted-foreground">Spoken Response</h3>
                         <Card className="flex-1 flex items-center justify-center bg-muted">
-                          <div className="text-center text-muted-foreground">
+                          <div className="text-center text-muted-foreground p-4">
                             <Volume2 className="w-10 h-10 mx-auto"/>
-                            <p className="text-sm mt-2">Audio from the other user will play automatically.</p>
+                            <p className="text-sm mt-2">Audio from the other user will play here.</p>
                             {isLoading['tts'] && <p className="text-xs animate-pulse mt-1">Generating audio...</p>}
                           </div>
                         </Card>
@@ -316,7 +319,7 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
                 rows={2}
               />
               <Button onClick={handleManualSend} disabled={!manualInput.trim()}>
-                  <Send className="mr-2" /> Send Message
+                  <Send className="mr-2" /> Send
               </Button>
             </div>
           </CardContent>
