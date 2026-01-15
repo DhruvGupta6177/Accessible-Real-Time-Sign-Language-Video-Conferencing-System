@@ -39,7 +39,7 @@ const blobToDataUrl = (blob: Blob): Promise<string> => {
   });
 };
 
-export default function CallInterface({ roomId, initialUserMode }: { roomId: string, initialUserMode: UserMode }) {
+export default function CallInterface({ roomId, initialUserMode, displayName }: { roomId: string, initialUserMode: UserMode, displayName: string }) {
   const { toast } = useToast();
   const router = useRouter();
   const { user } = useUser();
@@ -68,7 +68,7 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
   const userAvatarPlaceholder = PlaceHolderImages.find(p => p.id === 'user-avatar-placeholder');
 
   const participants = [
-    { name: user?.email || 'You', isMe: true },
+    { name: displayName || user?.email || 'You', isMe: true },
     { name: 'Remote User', isMe: false }
   ];
 
@@ -104,7 +104,7 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
       localStream?.getTracks().forEach(track => track.stop());
       screenStream?.getTracks().forEach(track => track.stop());
     }
-  }, [roomId, toast]);
+  }, [roomId, toast, localStream, screenStream]);
 
 
   const handleStopCall = () => {

@@ -4,11 +4,13 @@ import { useState, useEffect, useRef } from 'react';
 import CallInterface from "@/components/call-interface";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Ear, Hand, Mic, Video as VideoIcon } from 'lucide-react';
+import { Ear, Hand } from 'lucide-react';
 import type { UserMode } from '@/components/call-interface';
 import VideoPlayer from '@/components/video-player';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useToast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 function PreCallLobby({ onJoin }: { onJoin: () => void }) {
     const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -34,7 +36,7 @@ function PreCallLobby({ onJoin }: { onJoin: () => void }) {
         return () => {
             localStream?.getTracks().forEach(track => track.stop());
         };
-    }, [toast]);
+    }, [toast, localStream]);
     
     const handleJoin = () => {
         localStream?.getTracks().forEach(track => track.stop());
@@ -46,6 +48,7 @@ function PreCallLobby({ onJoin }: { onJoin: () => void }) {
             <Card className="w-full max-w-2xl">
                 <CardHeader>
                     <CardTitle className="text-2xl">Ready to join?</CardTitle>
+
                     <CardDescription>Check your camera and microphone before entering.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -63,7 +66,21 @@ function PreCallLobby({ onJoin }: { onJoin: () => void }) {
 
 export default function RoomPage({ params }: { params: { roomId: string } }) {
   const [userMode, setUserMode] = useState<UserMode | null>(null);
+  const [displayName, setDisplayName] = useState('');
   const [isInLobby, setIsInLobby] = useState(true);
+  const { toast } = useToast();
+
+  const handleModeSelection = (mode: UserMode) => {
+    if (!displayName.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Name Required",
+        description: "Please enter your name to join the meeting."
+      });
+      return;
+    }
+    setUserMode(mode);
+  };
 
   if (isInLobby) {
     return <PreCallLobby onJoin={() => setIsInLobby(false)} />;
@@ -75,25 +92,36 @@ export default function RoomPage({ params }: { params: { roomId: string } }) {
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle className="text-2xl">Choose Your Experience</CardTitle>
-            <CardDescription>Select how you will participate in this call.</CardDescription>
+            <CardDescription>Select how you will participate and enter your name.</CardDescription>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Button
-              variant="outline"
-              className="h-24 text-lg flex-col gap-2"
-              onClick={() => setUserMode('hearing')}
-            >
-              <Ear className="w-8 h-8" />
-              Hearing
-            </Button>
-            <Button
-              variant="outline"
-              className="h-24 text-lg flex-col gap-2"
-              onClick={() => setUserMode('deaf')}
-            >
-              <Hand className="w-8 h-8" />
-              Deaf/Mute
-            </Button>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+                <Label htmlFor="display-name">Your Name</Label>
+                <Input 
+                    id="display-name" 
+                    placeholder="Enter your name" 
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Button
+                  variant="outline"
+                  className="h-24 text-lg flex-col gap-2"
+                  onClick={() => handleModeSelection('hearing')}
+                >
+                  <Ear className="w-8 h-8" />
+                  Hearing
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-24 text-lg flex-col gap-2"
+                  onClick={() => handleModeSelection('deaf')}
+                >
+                  <Hand className="w-8 h-8" />
+                  Deaf/Mute
+                </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -102,7 +130,7 @@ export default function RoomPage({ params }: { params: { roomId: string } }) {
   
   return (
     <main className="bg-background min-h-screen">
-      <CallInterface roomId={params.roomId} initialUserMode={userMode} />
+      <CallInterface roomId={params.roomId} initialUserMode={userMode} displayName={displayName} />
     </main>
   );
 }
