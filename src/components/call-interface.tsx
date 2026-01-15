@@ -164,7 +164,7 @@ export default function CallInterface({ roomId, initialUserMode }: { roomId: str
       const avatarResult = await speechToSignAvatarForDeafUser({ spokenText: result.captions });
       setAvatarCommands(avatarResult.avatarAnimationCommands);
       setLoading('avatar', false);
-    } catch (e) => {
+    } catch (e) {
       toast({ variant: 'destructive', title: 'Speech Recognition Error' });
     } finally {
       setLoading('speech', false);
