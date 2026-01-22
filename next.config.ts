@@ -8,6 +8,9 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  turbopack: {
+    root: '.',
+  },
   images: {
     remotePatterns: [
       {

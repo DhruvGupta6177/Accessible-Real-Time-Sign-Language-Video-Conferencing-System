@@ -22,7 +22,12 @@ const TextToSpeechForHearingUserOutputSchema = z.object({
 export type TextToSpeechForHearingUserOutput = z.infer<typeof TextToSpeechForHearingUserOutputSchema>;
 
 export async function textToSpeechForHearingUser(input: TextToSpeechForHearingUserInput): Promise<TextToSpeechForHearingUserOutput> {
-  return textToSpeechForHearingUserFlow(input);
+  try {
+    return await textToSpeechForHearingUserFlow(input);
+  } catch (error) {
+    console.warn('Text to speech failed');
+    return { media: 'data:audio/wav;base64,' };
+  }
 }
 
 const textToSpeechForHearingUserFlow = ai.defineFlow(

@@ -18,10 +18,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import ShareDialog from "./share-dialog";
-import { useUser } from "@/firebase";
+import { useUser, useFirebase } from "@/firebase";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
+import { useWebRTC } from "@/hooks/use-webrtc";
+import { FirebaseSignalingService } from "@/lib/firebase-signaling";
+import { PeerConnection } from "@/lib/webrtc-service";
 
 export type UserMode = "hearing" | "deaf";
 type Caption = {
@@ -42,13 +45,12 @@ const blobToDataUrl = (blob: Blob): Promise<string> => {
 export default function CallInterface({ roomId, initialUserMode, displayName }: { roomId: string, initialUserMode: UserMode, displayName: string }) {
   const { toast } = useToast();
   const router = useRouter();
-  const { user } = useUser();
+  
+  // Get Firebase services - these should always be available in the CallInterface
+  const { user, firestore, auth } = useFirebase();
   const [userMode, setUserMode] = useState<UserMode>(initialUserMode);
-  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
-  const [isMicMuted, setIsMicMuted] = useState(true);
-  const [isVideoOn, setIsVideoOn] = useState(true);
   const [captions, setCaptions] = useState<Caption[]>([]);
   const [avatarCommands, setAvatarCommands] = useState("");
   const [manualInput, setManualInput] = useState("");
@@ -58,18 +60,49 @@ export default function CallInterface({ roomId, initialUserMode, displayName }: 
   const [isRecording, setIsRecording] = useState(false);
   const [isParticipantsOpen, setIsParticipantsOpen] = useState(true);
   const [participantSearch, setParticipantSearch] = useState("");
-
+  const [remoteParticipants, setRemoteParticipants] = useState<Array<{ id: string; displayName: string }>>([]);
+  const [connectionState, setConnectionState] = useState<RTCPeerConnectionState | 'not-connected'>('not-connected');
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+  const signalingRef = useRef<FirebaseSignalingService | null>(null);
+  const peerConnectionsRef = useRef<Map<string, PeerConnection>>(new Map());
+  const remoteStreamsRef = useRef<Map<string, MediaStream>>(new Map());
+  const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
+
+  // Initialize WebRTC
+  const {
+    localStream,
+    remoteStream,
+    isConnected,
+    isMicEnabled,
+    isVideoEnabled,
+    toggleMic,
+    toggleVideo,
+    createOffer,
+    createAnswer,
+    setRemoteDescription,
+    addIceCandidate,
+    close: closeWebRTC,
+  } = useWebRTC({
+    onConnectionStateChange: (state) => setConnectionState(state),
+    onError: (error) => {
+      console.error('WebRTC Error:', error);
+      toast({
+        variant: "destructive",
+        title: "Connection Error",
+        description: error.message,
+      });
+    },
+  });
 
   const localUserPlaceholder = PlaceHolderImages.find(p => p.id === 'local-user-placeholder')!;
   const remoteUserPlaceholder = PlaceHolderImages.find(p => p.id === 'remote-user-placeholder')!;
   const userAvatarPlaceholder = PlaceHolderImages.find(p => p.id === 'user-avatar-placeholder');
 
   const participants = [
-    { name: displayName || user?.email || 'You', isMe: true },
-    { name: 'Remote User', isMe: false }
+    { name: displayName || user?.email || 'You', isMe: true, id: user?.uid || 'local' },
+    ...remoteParticipants.map(p => ({ name: p.displayName, isMe: false, id: p.id }))
   ];
 
   const filteredParticipants = participants.filter(p => 
@@ -82,58 +115,269 @@ export default function CallInterface({ roomId, initialUserMode, displayName }: 
   
   const setLoading = (key: string, value: boolean) => setIsLoading(prev => ({...prev, [key]: value}));
 
+  // Initialize signaling and setup WebRTC connection
   useEffect(() => {
-    const startCall = async () => {
+    console.log('[CallInterface] Initialization dependencies:', {
+      user: user?.uid,
+      roomId,
+      firestore: firestore ? 'available' : 'null',
+      auth: auth ? 'available' : 'null',
+    });
+
+    // Don't initialize if user is not authenticated
+    if (!user) {
+      console.log('[CallInterface] User not authenticated yet');
+      return;
+    }
+
+    if (!roomId || !firestore || !auth) {
+      console.log('[CallInterface] Skipping initialization - missing dependencies');
+      return;
+    }
+
+    const initializeSignaling = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        setLocalStream(stream);
-        stream.getAudioTracks()[0].enabled = false;
-        setRoomUrl(`${window.location.origin}/room/${roomId}`);
+        console.log('[CallInterface] Starting signaling initialization');
+        console.log('[CallInterface] Creating FirebaseSignalingService with:', {
+          roomId,
+          userId: user.uid,
+          hasFirestore: !!firestore,
+          hasAuth: !!auth,
+        });
+
+        signalingRef.current = new FirebaseSignalingService(roomId, firestore, auth, user.uid);
+        
+        // Register presence with display name
+        console.log('[CallInterface] Registering presence with name:', displayName);
+        const presenceSuccess = await signalingRef.current.registerPresence(displayName);
+        console.log('[CallInterface] Presence registered:', presenceSuccess);
+
+        // Listen for remote participants
+        signalingRef.current.onParticipantsChange((participants) => {
+          console.log('[CallInterface] Participants changed:', participants);
+          setRemoteParticipants(participants);
+          
+          // Create peer connection for each new participant
+          participants.forEach((participant) => {
+            if (!peerConnectionsRef.current.has(participant.id)) {
+              console.log('[CallInterface] Creating peer connection for:', participant.id, participant.displayName);
+              console.log('[CallInterface] Local stream available:', !!localStream);
+              
+              try {
+                // Create new peer connection
+                const pc = new PeerConnection();
+                
+                // Add local stream to peer connection
+                if (localStream) {
+                  console.log('[CallInterface] Adding local stream to peer connection for:', participant.id);
+                  pc.addLocalStream(localStream);
+                } else {
+                  console.warn('[CallInterface] No local stream available for:', participant.id);
+                }
+                
+                // Handle remote stream
+                pc.onRemoteStream((stream) => {
+                  console.log('[CallInterface] Remote stream received from:', participant.id);
+                  console.log('[CallInterface] Remote stream details:', {
+                    videoTracks: stream.getVideoTracks().length,
+                    audioTracks: stream.getAudioTracks().length,
+                    totalTracks: stream.getTracks().length,
+                    streamId: stream.id,
+                  });
+                  stream.getTracks().forEach(track => {
+                    console.log('[CallInterface] Track:', { kind: track.kind, enabled: track.enabled, id: track.id });
+                  });
+                  remoteStreamsRef.current.set(participant.id, stream);
+                  setRemoteStreams(new Map(remoteStreamsRef.current));
+                });
+                
+                // Handle ICE candidates
+                pc.onIceCandidate((candidate) => {
+                  console.log('[CallInterface] Sending ICE candidate to:', participant.id);
+                  signalingRef.current?.sendIceCandidate(candidate, participant.id);
+                });
+                
+                peerConnectionsRef.current.set(participant.id, pc);
+                
+                // Create and send offer
+                pc.createOffer().then(offer => {
+                  console.log('[CallInterface] Created offer for:', participant.id);
+                  signalingRef.current?.sendOffer(offer, participant.id);
+                }).catch(err => {
+                  console.error('Error creating offer for', participant.id, ':', err);
+                });
+              } catch (error) {
+                console.error('Error creating peer connection for', participant.id, ':', error);
+              }
+            }
+          });
+        });
+
+        // Listen for signaling messages
+        signalingRef.current.onMessage(async (message) => {
+          console.log('[CallInterface] Received signaling message:', message.type, 'from:', message.from);
+          
+          try {
+            if (!message.data) {
+              console.warn('[CallInterface] Received message with no data:', message);
+              return;
+            }
+            
+            // Get or create peer connection for this user
+            let pc = peerConnectionsRef.current.get(message.from);
+            if (!pc) {
+              console.log('[CallInterface] Creating peer connection for incoming message from:', message.from);
+              pc = new PeerConnection();
+              
+              // Add local stream
+              if (localStream) {
+                console.log('[CallInterface] Adding local stream to incoming peer connection from:', message.from);
+                pc.addLocalStream(localStream);
+              } else {
+                console.warn('[CallInterface] No local stream when creating peer connection for:', message.from);
+              }
+              
+              // Handle remote stream
+              pc.onRemoteStream((stream) => {
+                console.log('[CallInterface] Remote stream received from:', message.from);
+                console.log('[CallInterface] Remote stream video tracks:', stream.getVideoTracks().length);
+                console.log('[CallInterface] Remote stream audio tracks:', stream.getAudioTracks().length);
+                console.log('[CallInterface] Stream details:', {
+                  streamId: stream.id,
+                  totalTracks: stream.getTracks().length,
+                });
+                remoteStreamsRef.current.set(message.from, stream);
+                setRemoteStreams(new Map(remoteStreamsRef.current));
+              });
+              
+              // Handle ICE candidates
+              pc.onIceCandidate((candidate) => {
+                console.log('[CallInterface] Sending ICE candidate to:', message.from);
+                signalingRef.current?.sendIceCandidate(candidate, message.from);
+              });
+              
+              peerConnectionsRef.current.set(message.from, pc);
+            }
+            
+            if (message.type === 'offer') {
+              console.log('[CallInterface] Processing offer from:', message.from);
+              // Only set remote description if signaling state allows it
+              if (pc.peerConnection.signalingState === 'stable') {
+                await pc.setRemoteDescription(message.data);
+                const answer = await pc.createAnswer();
+                await signalingRef.current!.sendAnswer(answer, message.from);
+              } else {
+                console.warn('[CallInterface] Peer connection not in stable state for offer:', pc.peerConnection.signalingState);
+              }
+            } else if (message.type === 'answer') {
+              console.log('[CallInterface] Processing answer from:', message.from);
+              console.log('[CallInterface] Current signaling state:', pc.peerConnection.signalingState);
+              // Only set remote description if in have-local-offer state
+              if (pc.peerConnection.signalingState === 'have-local-offer') {
+                await pc.setRemoteDescription(message.data);
+              } else {
+                console.warn('[CallInterface] Cannot set remote answer in state:', pc.peerConnection.signalingState);
+              }
+            } else if (message.type === 'ice-candidate') {
+              console.log('[CallInterface] Adding ICE candidate from:', message.from);
+              // Only add ICE candidate if peer connection is not closed
+              if (pc.peerConnection.connectionState !== 'closed') {
+                await pc.addIceCandidate(message.data).catch((err) => {
+                  console.warn('[CallInterface] Error adding ICE candidate:', err);
+                });
+              }
+            }
+          } catch (error) {
+            console.error('Error processing signaling message:', error);
+          }
+        });
+
+        // Setup room URL
+        try {
+          let origin = window.location.origin;
+          if (window.location.hostname === 'localhost' || window.location.hostname.startsWith('127.')) {
+            const res = await fetch('/api/server-ip');
+            if (res.ok) {
+              const data = await res.json();
+              const serverIp = data?.ip;
+              if (serverIp && serverIp !== 'localhost') {
+                origin = `${window.location.protocol}//${serverIp}:${window.location.port}`;
+              }
+            }
+          }
+          setRoomUrl(`${origin}/room/${roomId}`);
+        } catch (e) {
+          setRoomUrl(`${window.location.origin}/room/${roomId}`);
+        }
+
+        toast({
+          title: "Connected",
+          description: "You are now connected to the room."
+        });
       } catch (error) {
-        console.error("Error accessing media devices.", error);
+        console.error("[CallInterface] Error initializing signaling:", error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error("[CallInterface] Error details:", {
+          message: errorMessage,
+          type: error instanceof Error ? error.constructor.name : typeof error,
+          stack: error instanceof Error ? error.stack : undefined,
+        });
         toast({
           variant: "destructive",
-          title: "Camera/Mic Error",
-          description: "Could not access your camera and microphone. Please check permissions and try again.",
+          title: "Connection Error",
+          description: `Could not connect to the room. ${errorMessage}`,
         });
       }
     };
-    startCall();
+
+    initializeSignaling();
 
     return () => {
-      localStream?.getTracks().forEach(track => track.stop());
-      screenStream?.getTracks().forEach(track => track.stop());
-    }
-  }, [roomId, toast, localStream, screenStream]);
+      signalingRef.current?.removePresence().catch(console.error);
+      signalingRef.current?.cleanup();
+    };
+  }, [user, roomId, firestore, auth, displayName, toast]);
 
+  // Add local stream to all existing peer connections when it becomes available
+  useEffect(() => {
+    if (!localStream || peerConnectionsRef.current.size === 0) return;
 
-  const handleStopCall = () => {
-    localStream?.getTracks().forEach(track => track.stop());
+    console.log('[CallInterface] Local stream became available, updating peer connections');
+    peerConnectionsRef.current.forEach((pc, participantId) => {
+      try {
+        console.log('[CallInterface] Adding local stream to peer connection:', participantId);
+        pc.addLocalStream(localStream);
+      } catch (error) {
+        console.error('[CallInterface] Error adding local stream to peer connection:', participantId, error);
+      }
+    });
+  }, [localStream]);
+
+  const handleStopCall = async () => {
+    closeWebRTC();
     screenStream?.getTracks().forEach(track => track.stop());
-    setLocalStream(null);
     setScreenStream(null);
     setCaptions([]);
     setAvatarCommands("");
+    
+    if (signalingRef.current) {
+      await signalingRef.current.removePresence();
+      signalingRef.current.cleanup();
+    }
+
+    peerConnectionsRef.current.forEach(pc => pc?.close?.());
+    peerConnectionsRef.current.clear();
+
     router.push('/dashboard');
   };
 
-  const handleToggleMic = () => {
-    if (!localStream) return;
-    const audioTrack = localStream.getAudioTracks()[0];
-    if (audioTrack) {
-      audioTrack.enabled = !audioTrack.enabled;
-      setIsMicMuted(!audioTrack.enabled);
-    }
-  };
+  const handleToggleMic = useCallback(() => {
+    toggleMic();
+  }, [toggleMic]);
 
-  const handleToggleVideo = () => {
-    if (!localStream) return;
-    const videoTrack = localStream.getVideoTracks()[0];
-    if (videoTrack) {
-      videoTrack.enabled = !videoTrack.enabled;
-      setIsVideoOn(videoTrack.enabled);
-    }
-  };
+  const handleToggleVideo = useCallback(() => {
+    toggleVideo();
+  }, [toggleVideo]);
 
   const handleToggleRecording = () => {
     setIsRecording(prev => !prev);
@@ -239,11 +483,11 @@ export default function CallInterface({ roomId, initialUserMode, displayName }: 
     let processData: (blob: Blob) => void;
     let timeslice: number;
   
-    if (userMode === 'deaf' && isVideoOn && !isScreenSharing) {
+    if (userMode === 'deaf' && isVideoEnabled && !isScreenSharing) {
       options = { mimeType: 'video/webm; codecs=vp9' };
       processData = processSignToText;
       timeslice = 5000;
-    } else if (userMode === 'hearing' && !isMicMuted) {
+    } else if (userMode === 'hearing' && isMicEnabled) {
       options = { mimeType: 'audio/webm' };
       processData = processSpeechToText;
       timeslice = 3000;
@@ -284,10 +528,53 @@ export default function CallInterface({ roomId, initialUserMode, displayName }: 
     return () => {
       mediaRecorderRef.current?.stop();
     };
-  }, [localStream, screenStream, isScreenSharing, userMode, isMicMuted, isVideoOn, processSpeechToText, processSignToText, toast]);
+  }, [localStream, screenStream, isScreenSharing, userMode, isMicEnabled, isVideoEnabled, processSpeechToText, processSignToText, toast]);
 
-  const mainViewStream = isScreenSharing ? screenStream : null;
+  // Get first remote stream for main view
+  const getMainRemoteStream = () => {
+    console.log('[CallInterface] getMainRemoteStream - checking remote streams:', remoteStreams.size);
+    if (remoteStreams.size > 0) {
+      const stream = remoteStreams.values().next().value as MediaStream;
+      console.log('[CallInterface] Found remote stream:', {
+        streamId: stream.id,
+        videoTracks: stream.getVideoTracks().length,
+        audioTracks: stream.getAudioTracks().length,
+        totalTracks: stream.getTracks().length,
+      });
+      // Verify stream has tracks before returning
+      if (stream.getTracks().length > 0) {
+        console.log('[CallInterface] Using remote stream with', stream.getTracks().length, 'tracks');
+        return stream;
+      } else {
+        console.warn('[CallInterface] Remote stream has no tracks');
+      }
+    } else {
+      console.log('[CallInterface] No remote streams available');
+    }
+    return null;
+  };
+
+  const mainViewStream = isScreenSharing ? screenStream : getMainRemoteStream();
   const pipStream = isScreenSharing ? localStream : localStream;
+  
+  console.log('[CallInterface] Render state:', {
+    isScreenSharing,
+    mainViewStream: mainViewStream ? 'has stream' : 'null',
+    pipStream: pipStream ? 'has stream' : 'null',
+    remoteStreamsCount: remoteStreams.size,
+  });
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('[CallInterface] Remote streams count:', remoteStreams.size);
+    remoteStreams.forEach((stream, participantId) => {
+      console.log(`[CallInterface] Stream from ${participantId}:`, {
+        videoTracks: stream.getVideoTracks().length,
+        audioTracks: stream.getAudioTracks().length,
+        totalTracks: stream.getTracks().length,
+      });
+    });
+  }, [remoteStreams]);
 
   return (
     <div className="flex h-screen bg-background text-foreground">
@@ -310,15 +597,21 @@ export default function CallInterface({ roomId, initialUserMode, displayName }: 
                   <span>REC</span>
               </div>
           )}
+          {connectionState !== 'connected' && (
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-yellow-500/80 text-yellow-950 px-3 py-1 rounded-md">
+                  <CircleDot className="w-4 h-4 animate-pulse" />
+                  <span>Connecting...</span>
+              </div>
+          )}
         </div>
 
         <div className="absolute bottom-0 left-0 right-0 z-20 flex justify-center p-4">
           <div className="flex items-center gap-4 bg-card/80 backdrop-blur-sm p-3 rounded-xl shadow-lg">
-             <Button variant={isMicMuted ? "outline" : "default"} size="icon" className="w-12 h-12 rounded-full" onClick={handleToggleMic} disabled={userMode === 'deaf'}>
-                {isMicMuted ? <MicOff/> : <Mic/>}
+             <Button variant={!isMicEnabled ? "outline" : "default"} size="icon" className="w-12 h-12 rounded-full" onClick={handleToggleMic} disabled={userMode === 'deaf'}>
+                {!isMicEnabled ? <MicOff/> : <Mic/>}
               </Button>
-              <Button variant={isVideoOn ? "default" : "outline"} size="icon" className="w-12 h-12 rounded-full" onClick={handleToggleVideo}>
-                {isVideoOn ? <VideoIcon/> : <VideoOff/>}
+              <Button variant={isVideoEnabled ? "default" : "outline"} size="icon" className="w-12 h-12 rounded-full" onClick={handleToggleVideo}>
+                {isVideoEnabled ? <VideoIcon/> : <VideoOff/>}
               </Button>
                <Button variant={isScreenSharing ? "default" : "outline"} size="icon" className="w-12 h-12 rounded-full" onClick={handleToggleScreenShare}>
                 {isScreenSharing ? <ScreenShareOff /> : <ScreenShare />}

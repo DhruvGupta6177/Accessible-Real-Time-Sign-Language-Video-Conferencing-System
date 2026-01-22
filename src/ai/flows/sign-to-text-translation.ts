@@ -26,7 +26,12 @@ const SignToTextTranslationOutputSchema = z.object({
 export type SignToTextTranslationOutput = z.infer<typeof SignToTextTranslationOutputSchema>;
 
 export async function signToTextTranslation(input: SignToTextTranslationInput): Promise<SignToTextTranslationOutput> {
-  return signToTextTranslationFlow(input);
+  try {
+    return await signToTextTranslationFlow(input);
+  } catch (error) {
+    console.warn('Sign to text failed');
+    return { translation: '[AI unavailable]' };
+  }
 }
 
 const prompt = ai.definePrompt({

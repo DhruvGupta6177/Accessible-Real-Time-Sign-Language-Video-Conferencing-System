@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, use } from 'react';
 import CallInterface from "@/components/call-interface";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -64,7 +64,8 @@ function PreCallLobby({ onJoin }: { onJoin: () => void }) {
     );
 }
 
-export default function RoomPage({ params }: { params: { roomId: string } }) {
+export default function RoomPage({ params: paramsPromise }: { params: Promise<{ roomId: string }> }) {
+  const params = use(paramsPromise);
   const [userMode, setUserMode] = useState<UserMode | null>(null);
   const [displayName, setDisplayName] = useState('');
   const [isInLobby, setIsInLobby] = useState(true);

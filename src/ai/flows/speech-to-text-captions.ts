@@ -25,7 +25,12 @@ const SpeechToTextCaptionsOutputSchema = z.object({
 export type SpeechToTextCaptionsOutput = z.infer<typeof SpeechToTextCaptionsOutputSchema>;
 
 export async function speechToTextCaptions(input: SpeechToTextCaptionsInput): Promise<SpeechToTextCaptionsOutput> {
-  return speechToTextCaptionsFlow(input);
+  try {
+    return await speechToTextCaptionsFlow(input);
+  } catch (error) {
+    console.warn('Speech to text failed');
+    return { captions: '[AI unavailable]' };
+  }
 }
 
 const prompt = ai.definePrompt({

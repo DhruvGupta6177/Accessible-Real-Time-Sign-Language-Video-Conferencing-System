@@ -22,7 +22,12 @@ const SpeechToSignAvatarForDeafUserOutputSchema = z.object({
 export type SpeechToSignAvatarForDeafUserOutput = z.infer<typeof SpeechToSignAvatarForDeafUserOutputSchema>;
 
 export async function speechToSignAvatarForDeafUser(input: SpeechToSignAvatarForDeafUserInput): Promise<SpeechToSignAvatarForDeafUserOutput> {
-  return speechToSignAvatarForDeafUserFlow(input);
+  try {
+    return await speechToSignAvatarForDeafUserFlow(input);
+  } catch (error) {
+    console.warn('Speech to sign avatar failed');
+    return { avatarAnimationCommands: '[AI unavailable]' };
+  }
 }
 
 const signSelectionTool = ai.defineTool({

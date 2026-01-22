@@ -40,8 +40,17 @@ export default function DashboardPage() {
       startTime: new Date().toISOString(),
     };
     
-    await addDocumentNonBlocking(meetingsColRef, meetingData);
-    router.push(`/room/${newRoomId}`);
+    try {
+      // Wait for the document to be written before navigating
+      await addDocumentNonBlocking(meetingsColRef, meetingData);
+      // Give a moment for Firestore to write the document
+      await new Promise(resolve => setTimeout(resolve, 500));
+      router.push(`/room/${newRoomId}`);
+    } catch (error) {
+      console.error('Error creating meeting:', error);
+      // Still navigate even if logging fails, as the meeting is created
+      router.push(`/room/${newRoomId}`);
+    }
   };
 
   const handleJoinMeeting = () => {

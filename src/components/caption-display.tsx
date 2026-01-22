@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect } from 'react';
-import { ScrollArea } from "@/components/ui/scroll-area";
+import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 import { cn } from '@/lib/utils';
 import { MessageCircle } from 'lucide-react';
 
@@ -30,7 +30,8 @@ export default function CaptionDisplay({ captions }: CaptionDisplayProps) {
         <MessageCircle className="w-4 h-4" />
         Chat & Captions
       </h3>
-      <ScrollArea className="flex-1 rounded-md border p-4 text-sm bg-muted/30" viewportRef={viewportRef}>
+      <ScrollAreaPrimitive.Root className="flex-1 rounded-md border bg-muted/30 overflow-hidden">
+        <ScrollAreaPrimitive.Viewport ref={viewportRef} className="h-full w-full rounded-[inherit] p-4 text-sm">
         <div className="flex flex-col gap-3">
           {captions.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
@@ -50,7 +51,8 @@ export default function CaptionDisplay({ captions }: CaptionDisplayProps) {
             </div>
           ))}
         </div>
-      </ScrollArea>
+        </ScrollAreaPrimitive.Viewport>
+      </ScrollAreaPrimitive.Root>
     </div>
   );
 }

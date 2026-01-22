@@ -123,5 +123,35 @@ service cloud.firestore {
         allow delete: if isExistingOwner(userId);
       }
     }
+
+    /**
+     * @description Manages access to room-based signaling for WebRTC connections.
+     *   Any authenticated user can participate in signaling within a room.
+     * @path /rooms/{roomId}
+     * @principle Allows multiple users to exchange WebRTC signaling messages for peer connections.
+     */
+    match /rooms/{roomId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn();
+
+      /**
+       * @description Participants in a room can register their presence.
+       * @path /rooms/{roomId}/participants/{userId}
+       */
+      match /participants/{userId} {
+        allow read: if isSignedIn();
+        allow write: if isSignedIn() && request.auth.uid == userId;
+      }
+
+      /**
+       * @description Signaling messages for WebRTC offer/answer/ICE exchange.
+       * @path /rooms/{roomId}/messages/{messageId}
+       */
+      match /messages/{messageId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn();
+        allow delete: if isSignedIn() && (request.auth.uid == resource.data.from || request.auth.uid == resource.data.to);
+      }
+    }
   }
 }
