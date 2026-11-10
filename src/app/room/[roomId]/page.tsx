@@ -14,31 +14,57 @@ import { Label } from '@/components/ui/label';
 
 function PreCallLobby({ onJoin }: { onJoin: () => void }) {
     const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+    const [isRequestingMedia, setIsRequestingMedia] = useState(false);
     const { toast } = useToast();
     const localUserPlaceholder = PlaceHolderImages.find(p => p.id === 'local-user-placeholder')!;
 
     useEffect(() => {
-        const getMedia = async () => {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                setLocalStream(stream);
-            } catch (error) {
-                console.error("Error accessing media devices in lobby.", error);
-                toast({
-                  variant: "destructive",
-                  title: "Media Error",
-                  description: "Could not access camera/mic. Please check permissions."
-                });
-            }
-        };
-        getMedia();
-
         return () => {
-            localStream?.getTracks().forEach(track => track.stop());
+            localStream?.getTracks().forEach((track) => track.stop());
         };
-    }, [toast, localStream]);
+    }, [localStream]);
+
+    const requestMedia = async () => {
+        try {
+            if (!navigator.mediaDevices?.getUserMedia) {
+                throw new Error('Camera access is not available in this browser.');
+            }
+
+            setIsRequestingMedia(true);
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: 'user',
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 },
+                },
+                audio: true,
+            });
+
+            setLocalStream(stream);
+            return stream;
+        } catch (error) {
+            console.error('Error accessing media devices in lobby.', error);
+            const message = error instanceof DOMException && error.name === 'NotAllowedError'
+                ? 'Camera and microphone access was blocked. Please allow access in this browser and reload the page.'
+                : 'Could not access camera/mic. Please check permissions.';
+
+            toast({
+                variant: 'destructive',
+                title: 'Media Error',
+                description: message,
+            });
+            return null;
+        } finally {
+            setIsRequestingMedia(false);
+        }
+    };
     
-    const handleJoin = () => {
+    const handleJoin = async () => {
+        if (!localStream) {
+            const stream = await requestMedia();
+            if (!stream) return;
+        }
+
         localStream?.getTracks().forEach(track => track.stop());
         onJoin();
     };
@@ -56,7 +82,9 @@ function PreCallLobby({ onJoin }: { onJoin: () => void }) {
                         <VideoPlayer stream={localStream} placeholder={localUserPlaceholder} isMuted />
                     </div>
                     <div className="flex items-center justify-center gap-4">
-                        <Button size="lg" onClick={handleJoin}>Join now</Button>
+                        <Button size="lg" onClick={handleJoin} disabled={isRequestingMedia}>
+                            {isRequestingMedia ? 'Requesting camera...' : 'Join now'}
+                        </Button>
                     </div>
                 </CardContent>
             </Card>

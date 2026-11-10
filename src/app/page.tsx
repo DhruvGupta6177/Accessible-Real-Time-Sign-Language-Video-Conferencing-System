@@ -51,6 +51,12 @@ export default function LandingPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (user) {
+      router.replace('/dashboard');
+    }
+  }, [user, router]);
+
   const heroImage = PlaceHolderImages.find(p => p.id === 'hero-background');
 
   if (isUserLoading) {
@@ -62,7 +68,6 @@ export default function LandingPage() {
   }
 
   if (user) {
-    router.replace('/dashboard');
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
